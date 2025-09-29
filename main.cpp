@@ -1,5 +1,7 @@
-#include test.h
+#include <iostream>
+using namespace std;
 
-Main() {
-	runtest();
+int main(void) {
+	cout << "Hello, World!" << endl;
+	return 0;
 }
