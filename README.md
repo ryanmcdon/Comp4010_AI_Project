@@ -1,7 +1,14 @@
 # Comp4010_AI_Project
-Repository for our group project
+Repository for our COMP 4010 final group project
 
-October 15th 2025 - Progress Update
+### Contributors:
+- Ryan McDonald
+- Stanny Huang
+- Aaron Maagdenberg
+
+TA: Paul
+
+# October 15th 2025 - Progress Update
 
 ## 1) Define an Apotris variant
 We are doing the Variant Dig on Apotris Tetris. This is a variant that consists of having lines of “garbage” already on the board, and the goal is to clear these lines of garbage to reach the bottom of the board.
@@ -40,13 +47,12 @@ Our rewards are designed specifically for the Dig gamemode:
          
 ## 3) RL Algorithms to implement
 	
+In terms of real-time algorithms we can look into implementing for this project, we were considering Monte Carlo and Temporal Difference as options, but we will likely try more algorithms to see which ones work the best. These algorithms have policy values included, which is extremely important for our goal as we want to prioritize our AI to be as efficient in its block placements as possible. Therefore, the AI should be rewarded more for clearing lines of garbage earlier rather than later.
 
 ## 4) Plan systematic experiments
 
+These past two weeks, we have pivoted from editing the Apostris code directly, and instead shifting to creating an external Python application to scan the screen and make decisions based off what a player would be able to see (the state of the board, the incoming blocks, etc).
 
+So far, we have created a script that scans the screen, a script that displays the info of what the program is seeing, and finally a script for creating an overlay so in the future we can show exactly what the AI is scanning for/making decisions off of.
 
-
-
-
-Game states:
-First assumption, for simplicity, is we are going to compute the board as if it is a 10 * 4 section from the original 10 * 20 board. We will use a formula that converts the distance from the level of a column to the left to the column to the right to make a number. For example, the first column is always 
+In the next 2 weeks, we plan on finalizing the screen-scanning code to finish our environment and properly detect the gamestate of the Tetris board.
