@@ -330,9 +330,20 @@ class ApotrisAnalyzer:
             #file.write(string)
             #file.close()
             
-            
+            self.create_binary_board(board)
             return board
-    
+
+    def create_binary_board(self, board):
+        grid_rows = [board[i*10:(i+1)*10] for i in range(20)]
+
+        binary_grid = [[1 if cell else 0 for cell in row] for row in grid_rows]
+
+        print("Current board (1 = block, 0 = empty):")
+        for row in binary_grid:
+            print("".join(str(x) for x in row))
+        return binary_grid
+
+
     def create_debug_visualization(self, screenshot):
         """
         Create debug visualization showing border detection process
