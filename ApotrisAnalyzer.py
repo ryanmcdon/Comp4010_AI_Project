@@ -30,7 +30,8 @@ class ApotrisAnalyzer:
         windows = []
         win32gui.EnumWindows(enum_windows_callback, windows)
         
-        print("Available windows:")
+        if print_flag:
+            print("Available windows:")
         for i, (hwnd, title, rect) in enumerate(windows):
             print(f"  {i+1}. '{title}' - {rect}")
         
@@ -54,13 +55,18 @@ class ApotrisAnalyzer:
         if windows:
             # Return the first match
             hwnd, title, rect = windows[0]
-            print(f"Found window: '{title}' at {rect}")
+            if print_flag:
+                print(f"Found window: '{title}' at {rect}")
             return hwnd, rect
         else:
-            print(f"No window found with name containing '{window_name}'")
-            print("Available windows:")
-            self.list_all_windows()
-            return None, None
+            if print_flag:
+                print(f"No window found with name containing '{window_name}'")
+                print("Available windows:")
+                self.list_all_windows()
+                return None, None
+            else:
+                self.list_all_windows()
+                return None, None
     
     def capture_window_screenshot(self, window_handle, window_rect):
         """
@@ -105,7 +111,7 @@ class ApotrisAnalyzer:
             # Method 1: Look for rectangular game area with black borders
             game_coords = self._find_game_area_by_borders(gray, width, height)
             
-            if game_coords:
+            if game_coords and print_flag:
                 print(f"Game area found using border detection:")
                 print(f"  Top-left: {game_coords['top_left']}")
                 print(f"  Bottom-right: {game_coords['bottom_right']}")
@@ -113,9 +119,12 @@ class ApotrisAnalyzer:
                 print(f"  Size: {game_coords['width']}x{game_coords['height']} pixels")
                 print(f"  Area: {game_coords['area']} pixels")
                 return game_coords
-
-            print("No game area found with any detection method")
-            return None
+            elif game_coords and not print_flag:
+                return game_coords
+            else:
+                if print_flag:
+                    print("No game area found with any detection method")
+                return None
                 
         except Exception as e:
             print(f"Error analyzing image: {e}")
@@ -453,6 +462,44 @@ class ApotrisAnalyzer:
         except Exception as e:
             print(f"Error creating debug visualization: {e}")
             return None
+    
+    #Main method to run the complete analysis without visualization
+    #used to simplify process for repeated calls
+    def run_analysis_no_visualization(self):
+        print_flag = False
+        
+        print(f"Looking for window: '{self.target_window_name}'")
+        
+        # Step 1: Find the window
+        self.window_handle, self.window_rect = self.find_window_by_name(self.target_window_name)
+        
+        if not self.window_handle:
+            print(f"Could not find window '{self.target_window_name}'")
+            return False
+        
+        screenshot = self.capture_window_screenshot(self.window_handle, self.window_rect)
+        
+        if not screenshot:
+            print("Failed to capture screenshot")
+            return False
+        
+        # Step 2: Analyze for game area
+        self.game_coordinates = self.analyze_for_game_area(screenshot)
+        
+        if not self.game_coordinates:
+            print("No game area detected")
+            return False
+        
+        #step 3: Analyse for pieces and contour
+        white_board = self.get_board_white(screenshot, self.game_coordinates)
+        contour = self.countour_detection(white_board)
+        
+        return {
+            'game_coordinates': self.game_coordinates,
+            'white_board': white_board,
+            'contour': contour
+        }
+        
     
     def run_analysis(self):
         """
