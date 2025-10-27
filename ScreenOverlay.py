@@ -91,7 +91,7 @@ class MainWindow(QMainWindow):
             for y in range(self.block_height):
                 counter += 1
                 if self.block_array[counter] == 1:
-                    painter.drawEllipse(QtCore.QPointF(x * self.spacing, y * self.spacing), 2, 2)
+                    painter.drawEllipse(QtCore.QPointF((x * self.spacing) - self.spacing/2, (y * self.spacing) - self.spacing/2), 2, 2)
 
     def mousePressEvent(self, event):
         QtWidgets.qApp.quit()
