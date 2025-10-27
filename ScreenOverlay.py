@@ -18,7 +18,7 @@ class MainWindow(QMainWindow):
         self.setStyleSheet("background: transparent;")
 
         # Initialize variables
-        self.resize(110, 220)
+        self.resize(111, 221)
         self.block_width = 10
         self.block_height = 20
         self.spacing = 11 # Spacing between blocks
@@ -81,8 +81,9 @@ class MainWindow(QMainWindow):
             painter.drawPixmap(0, 0, self.grid_pixmap)
 
         # Draw dots
-        dot_brush = QtGui.QBrush(QtGui.QColor(255, 0, 0, 255))
-        painter.setBrush(dot_brush)
+        red_brush = QtGui.QBrush(QtGui.QColor(255, 0, 0, 255))
+        green_brush = QtGui.QBrush(QtGui.QColor(0, 255, 0, 255))
+        painter.setBrush(red_brush)
         painter.setPen(QtCore.Qt.NoPen)
 
         counter = 0
@@ -91,6 +92,10 @@ class MainWindow(QMainWindow):
             for y in range(self.block_height):
                 counter += 1
                 if self.block_array[counter] == 1:
+                    painter.setBrush(red_brush)
+                    painter.drawEllipse(QtCore.QPointF((x * self.spacing) - self.spacing/2, (y * self.spacing) - self.spacing/2), 2, 2)
+                elif self.block_array[counter] == 2:
+                    painter.setBrush(green_brush)
                     painter.drawEllipse(QtCore.QPointF((x * self.spacing) - self.spacing/2, (y * self.spacing) - self.spacing/2), 2, 2)
 
     def mousePressEvent(self, event):
