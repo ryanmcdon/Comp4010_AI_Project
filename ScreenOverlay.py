@@ -32,18 +32,18 @@ class MainWindow(QMainWindow):
         central_widget = QtWidgets.QWidget()
         self.setCentralWidget(central_widget)
 
-        # QtCore.QTimer.singleShot(2000, lambda: self.update_window_location(400, 600))
-
         # TEST: Update this over and over
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.updateDots)
         self.timer.start(1000)
+        # QtCore.QTimer.singleShot(2000, lambda: self.update_window_location(400, 600))
 
     def update_window_location(self, x, y):
+        """Move the overlay window to a new location"""
         self.move(x, y)
 
     def generate_grid(self):
-        """Render the static grid into a QPixmap once"""
+        """Initialize the static grid into a QPixmap"""
         pixmap = QtGui.QPixmap(self.size())
         pixmap.fill(QtCore.Qt.transparent)
 
@@ -61,7 +61,7 @@ class MainWindow(QMainWindow):
         painter.end()
         self.grid_pixmap = pixmap
 
-    # Update the dots visual
+    # Update the dots visual (TEST)
     def updateDots(self):
         """Generate new random dots and refresh screen"""
         self.block_array.clear()
@@ -80,14 +80,15 @@ class MainWindow(QMainWindow):
         if self.grid_pixmap:
             painter.drawPixmap(0, 0, self.grid_pixmap)
 
-        # Draw dots
+        # Dot brushes
         red_brush = QtGui.QBrush(QtGui.QColor(255, 0, 0, 255))
         green_brush = QtGui.QBrush(QtGui.QColor(0, 255, 0, 255))
         painter.setBrush(red_brush)
         painter.setPen(QtCore.Qt.NoPen)
 
+        """Draw dots based on block_array"""
         counter = 0
-
+        # Changes colour based on block_array values (0 = no dot, 1 = red dot, 2 = green dot)
         for x in range(self.block_width):
             for y in range(self.block_height):
                 counter += 1
