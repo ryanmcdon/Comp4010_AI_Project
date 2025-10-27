@@ -5,7 +5,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QApplication, QLabel, QVBoxLayout
 import random
 
-class MainWindow(QMainWindow):
+class ScreenOverlay(QtWidgets.QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
         self.setWindowFlags(
@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
     def updateDots(self):
         """Generate new random dots and refresh screen"""
         self.block_array.clear()
-        for _ in range(self.block_width * self.block_height + 1):
+        for _ in range((self.block_width + 1) * (self.block_height + 1)):
             i = random.randint(0, 2)
             self.block_array.append(i)
         self.update()  # triggers paintEvent()
@@ -102,8 +102,10 @@ class MainWindow(QMainWindow):
     def mousePressEvent(self, event):
         QtWidgets.qApp.quit()
 
+    pass
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    mywindow = MainWindow()
+    mywindow = ScreenOverlay()
     mywindow.show()
     app.exec_()

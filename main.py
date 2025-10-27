@@ -17,6 +17,7 @@ import threading
 import subprocess
 import webbrowser
 from pathlib import Path
+from PyQt5 import QtWidgets
 
 # Add current directory to path for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -24,7 +25,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 try:
     from ScreenCapture import *
     from ScreenInfoDisplay import *
-    from ScreenOverlay import *
+    from ScreenOverlay import ScreenOverlay
     from ApotrisAnalyzer import ApotrisAnalyzer
 except ImportError as e:
     print(f"Import error: {e}")
@@ -33,14 +34,25 @@ except ImportError as e:
 
 class MainApplication:
 
-        
-        
     def run(self):
+        app = QtWidgets.QApplication(sys.argv)
+        
+        self.ScreenOverlay = ScreenOverlay()
+        self.ScreenOverlay.show()
+
         self.apotris_analyzer = ApotrisAnalyzer()
         info = self.apotris_analyzer.run_analysis_no_visualization()
         print(info['game_coordinates'])
         print(info['white_board'])
         print(info['contour'])
+
+        # Assign the extracted information to the overlay for display
+        # self.ScreenOverlay.update_window_location(info['game_coordinates']['top_left'][0], info['game_coordinates']['top_left'][1])
+        self.ScreenOverlay.update_window_location(1000, 800)  # Example fixed position
+        print(info['game_coordinates']['top_left'][0], info['game_coordinates']['top_left'][1])
+
+        sys.exit(app.exec_())
+
         
         
 if __name__ == "__main__":
