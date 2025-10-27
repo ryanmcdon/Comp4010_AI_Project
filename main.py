@@ -37,7 +37,7 @@ class MainApplication:
         
     def run(self):
         self.apotris_analyzer = ApotrisAnalyzer()
-        info = self.apotris_analyzer.run_analysis()
+        info = self.apotris_analyzer.run_analysis_no_visualization()
         print(info['game_coordinates'])
         print(info['white_board'])
         print(info['contour'])
