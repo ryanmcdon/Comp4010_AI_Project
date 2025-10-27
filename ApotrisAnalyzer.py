@@ -120,105 +120,99 @@ class ApotrisAnalyzer:
             print(f"Error analyzing image: {e}")
             return None
     
-    def _find_game_area_by_borders(self, gray_image, width, height):
-        """
-        Find game area by detecting black borders around a rectangular region
-        """
-        try:
-            # Define black threshold (adjust based on your game)
-            black_threshold = 50
-            
-            # Skip window borders - start analysis from inner area
-            border_margin = 50  # Skip first 50 pixels from edges
-            start_x = border_margin
-            start_y = border_margin
-            end_x = width - border_margin
-            end_y = height - border_margin
-            
-            # Look for horizontal black lines (top and bottom borders)
-            top_border_y = None
-            bottom_border_y = None
-            
-            # Scan from top to find first significant black line
-            for y in range(start_y, end_y - 100):  # Leave room for bottom border
-                row = gray_image[y, start_x:end_x]
-                black_pixels = np.sum(row < black_threshold)
-                total_pixels = len(row)
-                
-                # If more than 95% of pixels in this row are black, it's likely a border
-                if black_pixels / total_pixels > 0.95:
-                    top_border_y = y
-                    break
-            
-            # Scan from bottom to find first significant black line
-            for y in range(end_y - 1, start_y + 100, -1):  # Leave room for top border
-                row = gray_image[y, start_x:end_x]
-                black_pixels = np.sum(row < black_threshold)
-                total_pixels = len(row)
-                
-                if black_pixels / total_pixels > 0.95:
-                    bottom_border_y = y
-                    break
-            
-            # Look for vertical black lines (left and right borders)
-            left_border_x = None
-            right_border_x = None
-            
-            if top_border_y and bottom_border_y:
-                # Scan from left to find first significant black line
-                for x in range(start_x, end_x - 100):
-                    col = gray_image[top_border_y:bottom_border_y, x]
-                    black_pixels = np.sum(col < black_threshold)
-                    total_pixels = len(col)
-                    
-                    if black_pixels / total_pixels > 0.95:
-                        left_border_x = x
-                        break
-                
-                # Scan from right to find first significant black line
-                for x in range(end_x - 1, start_x + 100, -1):
-                    col = gray_image[top_border_y:bottom_border_y, x]
-                    black_pixels = np.sum(col < black_threshold)
-                    total_pixels = len(col)
-                    
-                    if black_pixels / total_pixels > 0.95:
-                        right_border_x = x
-                        break
-            
-            # If we found all four borders, calculate game area
-            if all([top_border_y, bottom_border_y, left_border_x, right_border_x]):
-                # Add small margin inside the borders to get actual game area
-                margin = 5
-                game_x = left_border_x + margin
-                game_y = top_border_y + margin
-                game_w = right_border_x - left_border_x - 2 * margin
-                game_h = bottom_border_y - top_border_y - 2 * margin
-                
-                # Validate that the detected area is reasonable
-                if game_w > 100 and game_h > 100 and game_w < width * 0.9 and game_h < height * 0.9:
-                    center_x = game_x + game_w // 2
-                    center_y = game_y + game_h // 2
-                    
-                    return {
-                        'top_left': (game_x, game_y),
-                        'bottom_right': (game_x + game_w, game_y + game_h),
-                        'center': (center_x, center_y),
-                        'width': game_w,
-                        'height': game_h,
-                        'area': game_w * game_h
-                    }
-            
-            return None
-            
-        except Exception as e:
-            print(f"Error in border detection: {e}")
-            return None
-
     
+    """
+    Find game area by detecting where non-black pixels start (game content)
+    """
+    def _find_game_area_by_borders(self, gray_image, width, height):
+        # Define black threshold (adjust based on your game)
+        black_threshold = 50 # the value of a black pixel
+        threshold = 0.2
+        
+        # Skip window borders - start analysis from inner area
+        border_margin = 50  # Skip first 50 pixels from edges
+        start_x = border_margin
+        start_y = border_margin
+        end_x = width - border_margin
+        end_y = height - border_margin
+        
+        # Look for where game content starts (non-black pixels)
+        game_start_y = None
+        game_end_y = None
+        
+        # Scan from top to find first significant non-black line (game content starts)
+        for y in range(start_y, end_y - border_margin*2):
+            row = gray_image[y, start_x:end_x]
+            non_black_pixels = np.sum(row >= black_threshold)
+            total_pixels = len(row)
+            
+            # If more than 20% of pixels in this row are non-black, game content likely starts here
+            if non_black_pixels / total_pixels > threshold:
+                game_start_y = y
+                break
+        
+        # Scan from bottom to find last significant non-black line (game content ends)
+        for y in range(end_y - 1, start_y + border_margin*2, -1):
+            row = gray_image[y, start_x:end_x]
+            non_black_pixels = np.sum(row >= black_threshold)
+            total_pixels = len(row)
+            
+            if non_black_pixels / total_pixels > threshold:
+                game_end_y = y
+                break
+        
+        # Look for where game content starts horizontally (left and right edges)
+        game_start_x = None
+        game_end_x = None
+        
+        # Scan from left to find first significant non-black line
+        for x in range(start_x, end_x - border_margin*2):
+            col = gray_image[game_start_y:game_end_y, x]
+            non_black_pixels = np.sum(col >= black_threshold)
+            total_pixels = len(col)
+            
+            if non_black_pixels / total_pixels > threshold:
+                game_start_x = x
+                break
+        
+        # Scan from right to find last significant non-black line
+        for x in range(end_x - 1, start_x + border_margin*2, -1):
+            col = gray_image[game_start_y:game_end_y, x]
+            non_black_pixels = np.sum(col >= black_threshold)
+            total_pixels = len(col)
+            
+            if non_black_pixels / total_pixels > threshold:
+                game_end_x = x
+                break
+        
+
+        game_x = game_start_x + 1
+        game_y = game_start_y + 1
+        game_w = game_end_x - game_start_x - 2 * 1
+        game_h = game_end_y - game_start_y - 2 * 1
+        
+
+        center_x = game_x + game_w // 2
+        center_y = game_y + game_h // 2
+                
+        return {
+            'top_left': (game_x, game_y),
+            'bottom_right': (game_x + game_w, game_y + game_h),
+            'center': (center_x, center_y),
+            'width': game_w,
+            'height': game_h,
+            'area': game_w * game_h
+            }
+        
+        return None
+
+
+
+    """
+    Create a visualization showing the detected game area
+    """
     def visualize_game_area(self, screenshot, game_coords):
-        """
-        Create a visualization showing the detected game area
-        """
+
         try:
             # Convert PIL image to numpy array
             img_array = np.array(screenshot)
@@ -230,12 +224,39 @@ class ApotrisAnalyzer:
                          (0, 255, 0),  # Green color
                          3)  # Line thickness
             
-            # Draw center point
-            cv2.circle(img_array, 
-                      game_coords['center'], 
-                      5, 
-                      (255, 0, 0),  # Red color
-                      -1)  # Filled circle
+            # Find the top left corner of tetris board
+            x , y = game_coords['top_left']
+            x+=273# center on block
+            y+=224
+            separation = 10 
+            # Draw point
+            colors = [] # array of colors 
+            for i in range(20):
+                for j in range(10): 
+                    # Get the color at the current (x, y) pixel
+                    colors.append(img_array[y, x].tolist())
+                    cv2.circle(img_array, 
+                            (x, y), 
+                            1, 
+                            (255, 0, 0),  # Red color
+                            -1)  # Filled circle
+                    x+=separation
+                x = game_coords['top_left'][0]+273
+                y+=separation
+        
+            file = open("pixel_colors.txt", "w")  
+            string = ""
+            for i in range(len(colors)):
+                if i%10 == 0 and i != 0:
+                    print(string)
+                    file.write(string + "\n")
+                    string = ""
+                string += str(colors[i]) + "\t"
+            print(string)
+            file.write(string)
+            file.close()
+            
+
             
             # Add text labels
             cv2.putText(img_array, f"Game Area: {game_coords['width']}x{game_coords['height']}", 
@@ -253,6 +274,76 @@ class ApotrisAnalyzer:
             print(f"Error creating visualization: {e}")
             return None
     
+    
+    #finds if colour is blackground or not (third pixel value of is 42 if backgroud, added some buffer for error)
+    def is_backgroud(self, colour):
+        if colour[2] >= 41 and colour[2]<=55:
+            return True
+        return False
+    
+    #finds the contour of the board, returns active piece and board
+    def countour_detection(self, screenshot, game_coords):
+            img_array = np.array(screenshot)
+            x , y = game_coords['top_left']
+            x+=273# center on block
+            y+=224
+            separation = 10 
+            board = [] 
+            contour = []
+            height = 0
+            column = False
+            for j in range(10):
+                for i in range(20): 
+                    # Get the color at the current (x, y) pixel
+                    square = self.is_backgroud(img_array[y, x])
+                    board.append(square)
+                    if square == False and j == 0 and column == False:
+                        height = i
+                        column = True
+                    elif square == False and j > 0 and column == False:
+                        contour.append( max(min(height-i, 4), -4))
+                        height = i
+                        column = True
+                    y+=separation
+                if column == True:
+                    column = False
+                else:
+                    contour.append(max(min(height-i, 4), -4))
+                    height = 0
+
+                x+=separation
+                y=game_coords['top_left'][1]+224
+                
+            print(contour)
+            #file = open("board.txt", "w")  
+            string = ""
+            for i in range(len(board)):
+                if i%20 == 0 and i != 0:
+                    print(string)
+                    #file.write(string + "\n")
+                    string = ""
+                if board[i] == True:
+                    string += " - " + "\t"
+                else:
+                    string += "Block" + "\t"
+            print(string)
+            #file.write(string)
+            #file.close()
+            
+            self.create_binary_board(board)
+            return board
+
+    def create_binary_board(self, board):
+        grid_rows = [board[i*10:(i+1)*10] for i in range(20)]
+
+        binary_grid = [[1 if cell else 0 for cell in row] for row in grid_rows]
+
+        print("Current board (1 = block, 0 = empty):")
+        for row in binary_grid:
+            print("".join(str(x) for x in row))
+        return binary_grid
+
+
     def create_debug_visualization(self, screenshot):
         """
         Create debug visualization showing border detection process
@@ -311,8 +402,8 @@ class ApotrisAnalyzer:
             return False
         
         # Step 2.5: Create debug visualization
-        print("Creating debug visualization...")
-        self.create_debug_visualization(screenshot)
+        #print("Creating debug visualization...")
+        #self.create_debug_visualization(screenshot)
         
         # Step 3: Analyze for game area
         print("Analyzing image for game area...")
@@ -325,6 +416,7 @@ class ApotrisAnalyzer:
         # Step 4: Create visualization
         print("Creating visualization...")
         self.visualize_game_area(screenshot, self.game_coordinates)
+        self.countour_detection(screenshot, self.game_coordinates)
         
         # Step 5: Convert to screen coordinates
         screen_coords = self.convert_to_screen_coordinates(self.game_coordinates)
