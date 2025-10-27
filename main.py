@@ -45,11 +45,15 @@ class MainApplication:
         print(info['game_coordinates'])
         print(info['white_board'])
         print(info['contour'])
+        print(info['board'])
 
         # Assign the extracted information to the overlay for display
         # self.ScreenOverlay.update_window_location(info['game_coordinates']['top_left'][0], info['game_coordinates']['top_left'][1])
         self.ScreenOverlay.update_window_location(1000, 800)  # Example fixed position
         print(info['game_coordinates']['top_left'][0], info['game_coordinates']['top_left'][1])
+
+        self.ScreenOverlay.setDots(info['board'])
+
 
         sys.exit(app.exec_())
 
