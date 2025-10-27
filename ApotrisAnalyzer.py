@@ -493,11 +493,13 @@ class ApotrisAnalyzer:
         #step 3: Analyse for pieces and contour
         white_board = self.get_board_white(screenshot, self.game_coordinates)
         contour = self.countour_detection(white_board)
+        board = self.get_board(screenshot, self.game_coordinates)
         
         return {
             'game_coordinates': self.game_coordinates,
             'white_board': white_board,
-            'contour': contour
+            'contour': contour,
+            'board': board
         }
         
     

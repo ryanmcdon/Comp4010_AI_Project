@@ -5,7 +5,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QApplication, QLabel, QVBoxLayout
 import random
 
-class MainWindow(QMainWindow):
+class ScreenOverlay(QtWidgets.QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
         self.setWindowFlags(
@@ -33,9 +33,11 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         # TEST: Update this over and over
+        '''
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.updateDots)
         self.timer.start(1000)
+        '''
         # QtCore.QTimer.singleShot(2000, lambda: self.update_window_location(400, 600))
 
     def update_window_location(self, x, y):
@@ -65,9 +67,14 @@ class MainWindow(QMainWindow):
     def updateDots(self):
         """Generate new random dots and refresh screen"""
         self.block_array.clear()
-        for _ in range(self.block_width * self.block_height + 1):
+        for _ in range((self.block_width + 1) * (self.block_height + 1)):
             i = random.randint(0, 2)
             self.block_array.append(i)
+        self.update()  # triggers paintEvent()
+
+    def setDots(self, block_array):
+        """Set the dot pattern based on external input"""
+        self.block_array = block_array
         self.update()  # triggers paintEvent()
 
     # Paint the lines
@@ -89,21 +96,24 @@ class MainWindow(QMainWindow):
         """Draw dots based on block_array"""
         counter = 0
         # Changes colour based on block_array values (0 = no dot, 1 = red dot, 2 = green dot)
-        for x in range(self.block_width):
-            for y in range(self.block_height):
-                counter += 1
-                if self.block_array[counter] == 1:
+    
+        for y in range(self.block_height):
+            for x in range(self.block_width):
+                if self.block_array[counter] == True:
                     painter.setBrush(red_brush)
-                    painter.drawEllipse(QtCore.QPointF((x * self.spacing) - self.spacing/2, (y * self.spacing) - self.spacing/2), 2, 2)
+                    painter.drawEllipse(QtCore.QPointF((x * self.spacing) + self.spacing/2, (y * self.spacing) + self.spacing/2), 2, 2)
                 elif self.block_array[counter] == 2:
                     painter.setBrush(green_brush)
-                    painter.drawEllipse(QtCore.QPointF((x * self.spacing) - self.spacing/2, (y * self.spacing) - self.spacing/2), 2, 2)
+                    painter.drawEllipse(QtCore.QPointF((x * self.spacing) + self.spacing/2, (y * self.spacing) + self.spacing/2), 2, 2)
+                counter += 1
 
     def mousePressEvent(self, event):
         QtWidgets.qApp.quit()
 
+    pass
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    mywindow = MainWindow()
+    mywindow = ScreenOverlay()
     mywindow.show()
     app.exec_()
