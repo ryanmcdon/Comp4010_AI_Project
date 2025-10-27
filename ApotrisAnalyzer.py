@@ -6,6 +6,7 @@ import numpy as np
 from PIL import Image
 import cv2
 import time
+print_flag = False #can affect more latter but at implementation only effects colour printout
 
 class ApotrisAnalyzer:
     def __init__(self, window_name="Apotris PC"):
@@ -226,8 +227,9 @@ class ApotrisAnalyzer:
             
             # Find the top left corner of tetris board
             x , y = game_coords['top_left']
-            x+=273# center on block
-            y+=224
+            offset = 4
+            x+=273 # center on block
+            y+=224+offset
             separation = 10 
             # Draw point
             colors = [] # array of colors 
@@ -248,11 +250,13 @@ class ApotrisAnalyzer:
             string = ""
             for i in range(len(colors)):
                 if i%10 == 0 and i != 0:
-                    print(string)
+                    if print_flag:
+                        print(string)
                     file.write(string + "\n")
                     string = ""
                 string += str(colors[i]) + "\t"
-            print(string)
+            if print_flag:
+                print(string)
             file.write(string)
             file.close()
             
@@ -281,57 +285,127 @@ class ApotrisAnalyzer:
             return True
         return False
     
+    #takes in screenshot and game coords returns a board of active pieces
+    def get_board(self, screenshot, game_coords):
+        img_array = np.array(screenshot)
+        x , y = game_coords['top_left']
+        x+=273# center on block
+        y+=224
+        separation = 10 
+        board = [] 
+        for j in range(10):
+            for i in range(20):
+                square = self.is_backgroud(img_array[y, x])
+                board.append(square)
+                y+=separation
+            x+=separation
+            y=game_coords['top_left'][1]+224
+        return board
+    
+    def is_not_white(self, colour):
+        if colour[0] >= 220 and colour[1] >= 220 and colour[2] >= 220:
+            return False
+        return True
+    
+    def get_board_white(self, screenshot, game_coords):
+        img_array = np.array(screenshot)
+        x , y = game_coords['top_left']
+        offset = 4
+        x+=273# check for where white boarder will be
+        y+=224+offset
+        separation = 10 
+        board = [] 
+        for j in range(10):
+            for i in range(20):
+                square = self.is_not_white(img_array[y, x].tolist())
+                board.append(square)
+                y+=separation
+            x+=separation
+            y=game_coords['top_left'][1]+224+offset
+        return board
+    
+    def print_board(self, board):
+        for i in range(len(board)):
+            if i%20 == 0 and i != 0:
+                print()
+            print(board[i], end="\t")
+        print()
+        
+    def countour_detection(self, board):
+        contour = []
+        height = 0
+        column = False
+        for i in range(10):
+            for j in range(20):
+                if i == 0 and board[i*20+j] == False and column == False:
+                    contour.append(0)
+                    column = True
+                    height = j
+                if board[i*20+j] == False and column == False:
+                    contour.append(max(min(height-j, 4), -4))
+                    height = j
+                    column = True
+            if column == True:
+                column = False
+            else:
+                contour.append(max(min(height-i, 4), -4))
+                height = 0
+        print(contour)
+        return contour
+        
+    #takes in a board and returns the contour
     #finds the contour of the board, returns active piece and board
-    def countour_detection(self, screenshot, game_coords):
-            img_array = np.array(screenshot)
-            x , y = game_coords['top_left']
-            x+=273# center on block
-            y+=224
-            separation = 10 
-            board = [] 
-            contour = []
-            height = 0
-            column = False
-            for j in range(10):
-                for i in range(20): 
-                    # Get the color at the current (x, y) pixel
-                    square = self.is_backgroud(img_array[y, x])
-                    board.append(square)
-                    if square == False and j == 0 and column == False:
-                        height = i
-                        column = True
-                    elif square == False and j > 0 and column == False:
-                        contour.append( max(min(height-i, 4), -4))
-                        height = i
-                        column = True
-                    y+=separation
-                if column == True:
-                    column = False
-                else:
-                    contour.append(max(min(height-i, 4), -4))
-                    height = 0
+    #change to take in a board and return the contour
+    # def countour_detection(self, screenshot, game_coords):
+            # img_array = np.array(screenshot)
+            # x , y = game_coords['top_left']
+            # x+=273# center on block
+            # y+=224
+            # separation = 10 
+            # board = [] 
+            # contour = []
+            # height = 0
+            # column = False
+            # for j in range(10):
+            #     for i in range(20): 
+            #         # Get the color at the current (x, y) pixel
+            #         square = self.is_backgroud(img_array[y, x])
+            #         board.append(square)
+            #         if square == False and j == 0 and column == False:
+            #             height = i
+            #             column = True
+            #         elif square == False and j > 0 and column == False:
+            #             contour.append( max(min(height-i, 4), -4))
+            #             height = i
+            #             column = True
+            #         y+=separation
+            #     if column == True:
+            #         column = False
+            #     else:
+            #         contour.append(max(min(height-i, 4), -4))
+            #         height = 0
 
-                x+=separation
-                y=game_coords['top_left'][1]+224
-                
-            print(contour)
-            #file = open("board.txt", "w")  
-            string = ""
-            for i in range(len(board)):
-                if i%20 == 0 and i != 0:
-                    print(string)
-                    #file.write(string + "\n")
-                    string = ""
-                if board[i] == True:
-                    string += " - " + "\t"
-                else:
-                    string += "Block" + "\t"
-            print(string)
-            #file.write(string)
-            #file.close()
+            #     x+=separation
+            #     y=game_coords['top_left'][1]+224
+
+            # print(contour)
+            # #file = open("board.txt", "w")  
+            # string = ""
+            # for i in range(len(board)):
+            #     if i%20 == 0 and i != 0:
+            #         print(string)
+            #         #file.write(string + "\n")
+            #         string = ""
+            #     if board[i] == True:
+            #         string += " - " + "\t"
+            #     else:
+            #         string += "Block" + "\t"
+            # print(string)
+            # #file.write(string)
+            # #file.close()
             
-            self.create_binary_board(board)
-            return board
+            # self.create_binary_board(board)
+            # return board
 
     def create_binary_board(self, board):
         grid_rows = [board[i*10:(i+1)*10] for i in range(20)]
@@ -415,8 +489,13 @@ class ApotrisAnalyzer:
         
         # Step 4: Create visualization
         print("Creating visualization...")
+        # board = self.get_board(screenshot, self.game_coordinates)
+        # self.print_board(board)
         self.visualize_game_area(screenshot, self.game_coordinates)
-        self.countour_detection(screenshot, self.game_coordinates)
+        # self.countour_detection(board)
+        white_board = self.get_board_white(screenshot, self.game_coordinates)
+        self.print_board(white_board)
+        contour = self.countour_detection(white_board)
         
         # Step 5: Convert to screen coordinates
         screen_coords = self.convert_to_screen_coordinates(self.game_coordinates)
@@ -435,7 +514,11 @@ class ApotrisAnalyzer:
         print(f"  Bottom-right: {screen_coords['bottom_right']}")
         print(f"  Center: {screen_coords['center']}")
         
-        return True
+        return {
+            'game_coordinates': self.game_coordinates,
+            'white_board': white_board,
+            'contour': contour
+        }
     
     def convert_to_screen_coordinates(self, game_coords):
         """
