@@ -17,8 +17,11 @@ class env(gym.Env):
         self.cell_spacing = 10
 
         self.action_space = spaces.Discrete(7)
-        self.observation_space = spaces.Box(
-            low=0, high=1, shape=(200,), dtype=np.int8
+        self.state_space = spaces.Box(
+            low=-4, 
+            high=4, 
+            shape=(10,),  # 10 columns x 20 rows = 200 flattened
+            dtype=np.int8
         )
 
     def reset(self, seed=None, options=None):
@@ -42,8 +45,8 @@ class env(gym.Env):
         self.top_left_x = self.cached_region["top_left"][0] + self.x_offset
         self.top_left_y = self.cached_region["top_left"][1] + self.y_offset
 
-        board = np.array(info["board"], dtype=np.int8)
-        return board, {}
+        contour = np.array(info["contour"], dtype=np.int8)
+        return contour, {}
 
     def step(self, action):
         if action == 0:
@@ -62,24 +65,9 @@ class env(gym.Env):
             BotInput.hold()
         time.sleep(0.02)
 
+        board_state = self.analyzer.get_board_state()
 
-        screenshot = pyautogui.screenshot(region=self.region_tuple)
-        img_array = np.array(screenshot)
-
-        board = []
-        x = self.x_offset
-        y_start = self.y_offset
-
-        for j in range(10): 
-            y = y_start
-            for i in range(20): 
-                pixel = img_array[y, x]
-                square = not self.analyzer.is_backgroud(pixel)
-                board.append(int(square))
-                y += self.cell_spacing
-            x += self.cell_spacing
 
         reward = 0.0
         done = False
-
-        return np.array(board, dtype=np.int8), reward, done, False, {}
+        return np.array(board_state, dtype=np.int8), reward, done, False, {}
