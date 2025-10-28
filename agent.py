@@ -10,3 +10,5 @@ for step in range(200):
     state, reward, done, _, _ = env.step(action)
     print(f"Step {step}: took action {action}, reward {reward}")
     time.sleep(0.01)
+
+

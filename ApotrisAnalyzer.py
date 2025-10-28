@@ -75,7 +75,7 @@ class ApotrisAnalyzer:
         try:
             # Bring window to front
             win32gui.SetForegroundWindow(window_handle)
-            time.sleep(0.5)  # Give time for window to come to front
+            #time.sleep(0.5)  # Give time for window to come to front
             
             # Capture the window region
             left, top, right, bottom = window_rect
@@ -86,8 +86,8 @@ class ApotrisAnalyzer:
             screenshot = pyautogui.screenshot(region=(left, top, width, height))
             
             # Save for debugging
-            screenshot.save("apotris_capture.png")
-            print(f"Screenshot saved as 'apotris_capture.png'")
+            #screenshot.save("apotris_capture.png")
+            #print(f"Screenshot saved as 'apotris_capture.png'")
             
             return screenshot
             
@@ -111,15 +111,17 @@ class ApotrisAnalyzer:
             # Method 1: Look for rectangular game area with black borders
             game_coords = self._find_game_area_by_borders(gray, width, height)
             
-            if game_coords and print_flag:
-                print(f"Game area found using border detection:")
-                print(f"  Top-left: {game_coords['top_left']}")
-                print(f"  Bottom-right: {game_coords['bottom_right']}")
-                print(f"  Center: {game_coords['center']}")
-                print(f"  Size: {game_coords['width']}x{game_coords['height']} pixels")
-                print(f"  Area: {game_coords['area']} pixels")
-                return game_coords
-            elif game_coords and not print_flag:
+            if game_coords:
+                # Save coordinates to persistent variable
+                self.game_coordinates = game_coords
+                
+                if print_flag:
+                    print(f"Game area found using border detection:")
+                    print(f"  Top-left: {game_coords['top_left']}")
+                    print(f"  Bottom-right: {game_coords['bottom_right']}")
+                    print(f"  Center: {game_coords['center']}")
+                    print(f"  Size: {game_coords['width']}x{game_coords['height']} pixels")
+                    print(f"  Area: {game_coords['area']} pixels")
                 return game_coords
             else:
                 if print_flag:
@@ -359,7 +361,7 @@ class ApotrisAnalyzer:
             else:
                 contour.append(max(min(height-i, 4), -4))
                 height = 0
-        print(contour)
+        # print(contour)
         return contour
         
     #takes in a board and returns the contour
@@ -465,6 +467,16 @@ class ApotrisAnalyzer:
     
     #Main method to run the complete analysis without visualization
     #used to simplify process for repeated calls
+    
+    def get_board_state(self):
+        print_flag = False
+        self.window_handle, self.window_rect = self.find_window_by_name(self.target_window_name)
+        screenshot = self.capture_window_screenshot(self.window_handle, self.window_rect)
+        self.game_coordinates = self.analyze_for_game_area(screenshot)
+        board = self.get_board(screenshot, self.game_coordinates)
+        contour = self.countour_detection(board)
+        return contour
+    
     def run_analysis_no_visualization(self):
         print_flag = False
         
