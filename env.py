@@ -68,6 +68,9 @@ class env(gym.Env):
         board_state = self.analyzer.get_board_state()
 
 
-        reward = 0.0
+        reward = 30
+        for i in range(len(board_state)):           
+            reward -= abs(board_state[i])
+
         done = False
         return np.array(board_state, dtype=np.int8), reward, done, False, {}

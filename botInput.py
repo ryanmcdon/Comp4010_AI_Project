@@ -10,6 +10,7 @@ VK_SPACE = 0x20
 VK_Z = 0x5A
 VK_A = 0x41
 VK_C = 0x43
+VK_ESC = 0x1B
 
 GAME_WINDOW_TITLE = "Apotris PC"  
 
@@ -66,3 +67,8 @@ class BotInput:
          
         print("[BotInput] Pressing C")
         press_key(VK_C)
+        
+    @staticmethod
+    def pause():
+        print("[BotInput] Pressing ESC")
+        press_key(VK_ESC)
