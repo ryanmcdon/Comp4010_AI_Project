@@ -63,7 +63,7 @@ class env(gym.Env):
             BotInput.hard_drop()
         elif action == 6:
             BotInput.hold()
-        time.sleep(0.02)
+        #time.sleep(0.02)
 
         board_state = self.analyzer.get_board_state()
 
