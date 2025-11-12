@@ -41,7 +41,7 @@ class MainApplication:
         self.ScreenOverlay.show()
 
         self.apotris_analyzer = ApotrisAnalyzer()
-        info = self.apotris_analyzer.run_analysis_no_visualization()
+        info = self.apotris_analyzer.run_analysis_tester()
         print(info['game_coordinates'])
         print(info['white_board'])
         print(info['contour'])
