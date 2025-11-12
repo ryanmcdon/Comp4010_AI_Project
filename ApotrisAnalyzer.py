@@ -521,7 +521,7 @@ class ApotrisAnalyzer:
     """
     Used for visualization of the analyzer, not used for implementation as prints slow the machine down
     """
-    def run_analysis_tester_no_visualization(self):
+    def run_analysis_no_visualization(self):
         print_flag = False
         
         print(f"Looking for window: '{self.target_window_name}'")
