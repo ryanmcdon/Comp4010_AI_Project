@@ -7,6 +7,7 @@ from PIL import Image
 import cv2
 import time
 print_flag = False #can affect more latter but at implementation only effects colour printout
+global_height = 0 #global height of the board
 
 class ApotrisAnalyzer:
     def __init__(self, window_name="Apotris PC"):
@@ -349,8 +350,10 @@ class ApotrisAnalyzer:
         for i in range(10):
             for j in range(20):
                 if i == 0 and board[i*20+j] == False and column == False:
-                    contour.append(0)
+                    contour.append(j)
                     column = True
+                    global global_height
+                    global_height = j
                     height = j
                 if board[i*20+j] == False and column == False:
                     contour.append(max(min(height-j, 4), -4))
@@ -600,6 +603,9 @@ class ApotrisAnalyzer:
         }
         
         return screen_coords
+
+    def get_global_height():
+        return global_height
 
 if __name__ == "__main__":
     # Example usage: analyzer = ApotrisAnalyzer(); analyzer.run_analysis()
