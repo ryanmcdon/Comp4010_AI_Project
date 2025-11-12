@@ -56,3 +56,12 @@ These past two weeks, we have pivoted from editing the Apostris code directly, a
 So far, we have created a script that scans the screen, a script that displays the info of what the program is seeing, and finally a script for creating an overlay so in the future we can show exactly what the AI is scanning for/making decisions off of.
 
 In the next 2 weeks, we plan on finalizing the screen-scanning code to finish our environment and properly detect the gamestate of the Tetris board.
+
+# October 30th 2025 - Progress Update
+
+
+
+# November 15th 2025 - Progress Update
+
+
+
