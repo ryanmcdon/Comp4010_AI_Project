@@ -111,7 +111,7 @@ class ApotrisAnalyzer:
         height, width = img_array.shape[:2]
         
         # Convert to grayscale for easier analysis
-        gray_image = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+        gray_image = img_array
         
         # Method 1: Look for rectangular game area with black borders           
             # Define black threshold (adjust based on your game)
@@ -126,20 +126,22 @@ class ApotrisAnalyzer:
         end_y = height - border_margin
 
         # Look for where game content starts (non-black pixels)
-        game_start_y = None
-        game_end_y = None
+        game_start_y = 1
+        game_end_y = 1
+        TESTERX = None
+        TESTERy= None
+        for y in range(start_y + border_margin, end_y - border_margin):
+            for x in range(start_x + border_margin, end_x - border_margin):
+                if not self.is_not_white(img_array[y, x]):  
+                    TESTERX = x
+                    TESTERy = y
+                    print('The starting pixel, from analyze game area', TESTERy ,",",TESTERX)
+                    print(img_array[TESTERX,TESTERy])
+                    break  
 
-        # Scan from top to find first significant non-black line (game content starts)
-        for y in range(start_y, end_y - border_margin*2):
-            row = gray_image[y, start_x:end_x]
-            non_black_pixels = np.sum(row >= black_threshold)
-            total_pixels = len(row)
-            
-            # If more than 20% of pixels in this row are non-black, game content likely starts here
-            if non_black_pixels / total_pixels > threshold:
-                game_start_y = y
+            if TESTERX is not None:
                 break
-
+        
         # Scan from bottom to find last significant non-black line (game content ends)
         for y in range(end_y - 1, start_y + border_margin*2, -1):
             row = gray_image[y, start_x:end_x]
@@ -151,8 +153,8 @@ class ApotrisAnalyzer:
                 break
 
         # Look for where game content starts horizontally (left and right edges)
-        game_start_x = None
-        game_end_x = None
+        game_start_x = 1
+        game_end_x = 1
 
         # Scan from left to find first significant non-black line
         for x in range(start_x, end_x - border_margin*2):
@@ -185,8 +187,8 @@ class ApotrisAnalyzer:
         center_y = game_y + game_h // 2
 
         self.game_coordinates =  {
-            'top_left': (game_x, game_y),
-            'bottom_right': (game_x + game_w, game_y + game_h),
+            'top_left': (TESTERX, TESTERX),
+            'bottom_right': (TESTERX + 100, TESTERy + 200),
             'center': (center_x, center_y),
             'width': game_w,
             'height': game_h,
@@ -194,98 +196,13 @@ class ApotrisAnalyzer:
             }   
                 
         return {
-            'top_left': (game_x, game_y),
-            'bottom_right': (game_x + game_w, game_y + game_h),
+            'top_left': (TESTERX, TESTERy),
+            'bottom_right': (TESTERX + 100, TESTERy + 200),
             'center': (center_x, center_y),
             'width': game_w,
             'height': game_h,
             'area': game_w * game_h
             }   
-    
-    
-
-
-        
-        # Define black threshold (adjust based on your game)
-        black_threshold = 50 # the value of a black pixel
-        threshold = 0.2
-        
-        # Skip window borders - start analysis from inner area
-        border_margin = 50  # Skip first 50 pixels from edges
-        start_x = border_margin
-        start_y = border_margin
-        end_x = width - border_margin
-        end_y = height - border_margin
-        
-        # Look for where game content starts (non-black pixels)
-        game_start_y = None
-        game_end_y = None
-        
-        # Scan from top to find first significant non-black line (game content starts)
-        for y in range(start_y, end_y - border_margin*2):
-            row = gray_image[y, start_x:end_x]
-            non_black_pixels = np.sum(row >= black_threshold)
-            total_pixels = len(row)
-            
-            # If more than 20% of pixels in this row are non-black, game content likely starts here
-            if non_black_pixels / total_pixels > threshold:
-                game_start_y = y
-                break
-        
-        # Scan from bottom to find last significant non-black line (game content ends)
-        for y in range(end_y - 1, start_y + border_margin*2, -1):
-            row = gray_image[y, start_x:end_x]
-            non_black_pixels = np.sum(row >= black_threshold)
-            total_pixels = len(row)
-            
-            if non_black_pixels / total_pixels > threshold:
-                game_end_y = y
-                break
-        
-        # Look for where game content starts horizontally (left and right edges)
-        game_start_x = None
-        game_end_x = None
-        
-        # Scan from left to find first significant non-black line
-        for x in range(start_x, end_x - border_margin*2):
-            col = gray_image[game_start_y:game_end_y, x]
-            non_black_pixels = np.sum(col >= black_threshold)
-            total_pixels = len(col)
-            
-            if non_black_pixels / total_pixels > threshold:
-                game_start_x = x
-                break
-        
-        # Scan from right to find last significant non-black line
-        for x in range(end_x - 1, start_x + border_margin*2, -1):
-            col = gray_image[game_start_y:game_end_y, x]
-            non_black_pixels = np.sum(col >= black_threshold)
-            total_pixels = len(col)
-            
-            if non_black_pixels / total_pixels > threshold:
-                game_end_x = x
-                break
-        
-
-        game_x = game_start_x + 1
-        game_y = game_start_y + 1
-        game_w = game_end_x - game_start_x - 2 * 1
-        game_h = game_end_y - game_start_y - 2 * 1
-        
-
-        center_x = game_x + game_w // 2
-        center_y = game_y + game_h // 2
-                
-        return {
-            'top_left': (game_x, game_y),
-            'bottom_right': (game_x + game_w, game_y + game_h),
-            'center': (center_x, center_y),
-            'width': game_w,
-            'height': game_h,
-            'area': game_w * game_h
-            }
-        
-        return None
 
 
     """
@@ -307,8 +224,8 @@ class ApotrisAnalyzer:
             # Find the top left corner of tetris board
             x , y = game_coords['top_left']
             offset = 4
-            x+=273 # center on block
-            y+=224+offset
+            x+=5 # center on block
+            y+=5
             separation = 10 
             # Draw point
             colors = [] # array of colors 
@@ -322,7 +239,7 @@ class ApotrisAnalyzer:
                             (255, 0, 0),  # Red color
                             -1)  # Filled circle
                     x+=separation
-                x = game_coords['top_left'][0]+273
+                x = game_coords['top_left'][0]
                 y+=separation
         
             file = open("pixel_colors.txt", "w")  
@@ -592,6 +509,7 @@ class ApotrisAnalyzer:
             return False
         
         # Step 4: Create visualization
+        self.create_debug_visualization(screenshot)
         print("Creating visualization...")
         # board = self.get_board(screenshot, self.game_coordinates)
         # self.print_board(board)
