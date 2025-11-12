@@ -20,7 +20,7 @@ class ScreenOverlay(QtWidgets.QMainWindow):
         # Initialize variables
         self.block_width = 10
         self.block_height = 20
-        self.spacing = 22 # Spacing between blocks
+        self.spacing = 11 # Spacing between blocks
 
         # Initalize board size based on block variables
         self.resize((self.block_width * self.spacing) + 1, (self.block_height * self.spacing) + 1)
@@ -41,9 +41,11 @@ class ScreenOverlay(QtWidgets.QMainWindow):
         self.setCentralWidget(central_widget)
 
         # TEST: Update this over and over
+        """
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.updateDots)
         self.timer.start(1000)
+        """
         # QtCore.QTimer.singleShot(2000, lambda: self.update_window_location(400, 600))
 
     def update_window_location(self, x, y):
@@ -78,9 +80,10 @@ class ScreenOverlay(QtWidgets.QMainWindow):
             self.block_array.append(i)
         self.update()  # triggers paintEvent()
 
-    def setDots(self, block_array):
-        """Set the dot pattern based on external input"""
+    def setInfo(self, block_array, contour_array):
+        """Set the dot and contour array information based on external input"""
         self.block_array = block_array
+        self.contour = contour_array
         self.update()  # triggers paintEvent()
 
     # Paint the lines
