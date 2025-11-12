@@ -67,11 +67,39 @@ class env(gym.Env):
 
         board_state = self.analyzer.get_board_state()
 
-    #(rewards flat lines)
-        reward = 10
-        for i in range(len(board_state)):           
-            reward -= abs(board_state[i])
-        
+        #call a reward function
+        reward = get_reward_line_any_clear(board_state)
 
         done = False
         return np.array(board_state, dtype=np.int8), reward, done, False, {}
+
+
+#reward for any line clear
+def get_reward_line_any_clear(board_state):
+    reward = 30
+    for i in range(len(board_state)):  
+        if i != 0:
+            reward -= abs(board_state[i])
+        else:
+            reward -= board_state[i]*2
+    return reward
+
+#reward for height of the board
+def get_reward_height(board_state):
+    reward = 30
+    for i in range(len(board_state)):  
+        if i != 0:
+            reward -= abs(board_state[i])
+        else:
+            reward -= board_state[i]*2
+    return reward
+
+#reward for starting line clear
+def get_reward_starting_line_clear(board_state):
+    reward = 30
+    for i in range(len(board_state)):  
+        if i != 0:
+            reward -= abs(board_state[i])
+        else:
+            reward -= board_state[i]*2
+    return reward
