@@ -59,15 +59,25 @@ In the next 2 weeks, we plan on finalizing the screen-scanning code to finish ou
 
 # October 30th 2025 - Progress Update
 
-Ryan
+**Ryan**
 - Implemented an improved ApostrisAnalyzer that scans the screen and parses a 1D array to store locations of blocks within the grid
 - Implemented an algorithm to detect contours along the surface of the Tetris blocks
 - Created the StateSpace consisting of the block locations and contouring data
+- Contributed information to the Environment Demo powerpoint and video
+To-Dos:
+- 
 
-Aaron
+**Aaron**
 - Implemented python script that can execute keyboard inputs (allowing for Action space)
 - Refactored ApostrisAnalyzer code to be cleaner + easier to read
+- Contributed information to the Environment Demo powerpoint and video
+To-Dos:
+- 
 
+**Stanny**
+- Edited and compiled the Environment Demo video
+To-Dos:
+- 
 
 # November 15th 2025 - Progress Update
 
@@ -79,4 +89,5 @@ Stanny
 - Created a recreation of Tetris using Unity, replicating the Apostris Dig gamemode
 - Completed the refactor of our system to transfer data from the Tetris client and python project
 - Created a Socket-Signal server setup between python file "StateServer.py" and Unity Tetris executable
-
+To-Dos:
+- 
