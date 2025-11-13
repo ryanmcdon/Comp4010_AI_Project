@@ -59,9 +59,24 @@ In the next 2 weeks, we plan on finalizing the screen-scanning code to finish ou
 
 # October 30th 2025 - Progress Update
 
+Ryan
+- Implemented an improved ApostrisAnalyzer that scans the screen and parses a 1D array to store locations of blocks within the grid
+- Implemented an algorithm to detect contours along the surface of the Tetris blocks
+- Created the StateSpace consisting of the block locations and contouring data
+
+Aaron
+- Implemented python script that can execute keyboard inputs (allowing for Action space)
+- Refactored ApostrisAnalyzer code to be cleaner + easier to read
 
 
 # November 15th 2025 - Progress Update
 
+The past 2 weeks have been extremely daunting for us, as we ran into an issue with doing the Apostris screen analyzer technique where some blocks wouldn't be picked up from scans and the extremely-poor runtime of the entire system. Therefore, we made the hard decision to completely pivot off of Apostris for our environment, and swap entirely to a new system revolving around our own Tetris game, built from the ground up using Unity 2020.3.49f1. 
+This makes the previous python file of ApostrisAnalyzer deprecated. However, our AI is still being programmed in Python; our new method is to create a Socket-Signal server with the host being the new "StateServer.py" python file and the client being the Unity Tetris recreation. The Tetris client connects to the python file and sends JSON data of the state-space for our AI to use.
+Link to house-made Tetris repo: https://github.com/littlemanstann/COMP4010-UnityTetrisRecreation 
 
+Stanny
+- Created a recreation of Tetris using Unity, replicating the Apostris Dig gamemode
+- Completed the refactor of our system to transfer data from the Tetris client and python project
+- Created a Socket-Signal server setup between python file "StateServer.py" and Unity Tetris executable
 
