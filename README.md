@@ -96,5 +96,9 @@ Aaron
 -Optimization and organization to pre-exsisting code base
 -Error fixing misc screen analyzer bugs
 
+Ryan
+- Bug fixes to some edge cases in ApotrisAnalyser
+- Setup more reward functions for future improvments and use
+
 To-Dos:
 - Start AI devlopment :)
