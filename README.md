@@ -71,6 +71,7 @@ To-Dos:
 - Implemented python script that can execute keyboard inputs (allowing for Action space)
 - Refactored ApostrisAnalyzer code to be cleaner + easier to read
 - Contributed information to the Environment Demo powerpoint and video
+- Created archetecture for the implementation of the env demo states, rewards 
 To-Dos:
 - 
 
@@ -89,5 +90,11 @@ Stanny
 - Created a recreation of Tetris using Unity, replicating the Apostris Dig gamemode
 - Completed the refactor of our system to transfer data from the Tetris client and python project
 - Created a Socket-Signal server setup between python file "StateServer.py" and Unity Tetris executable
+
+Aaron
+-Developed new functionality logic for board size detection, to be universal for all resolutions, window sizes etc
+-Optimization and organization to pre-exsisting code base
+-Error fixing misc screen analyzer bugs
+
 To-Dos:
-- 
+- Start AI devlopment :)
