@@ -64,25 +64,27 @@ In the next 2 weeks, we plan on finalizing the screen-scanning code to finish ou
 - Implemented an algorithm to detect contours along the surface of the Tetris blocks
 - Created the StateSpace consisting of the block locations and contouring data
 - Contributed information to the Environment Demo powerpoint and video
-To-Dos:
-- 
 
 **Aaron**
 - Implemented python script that can execute keyboard inputs (allowing for Action space)
 - Refactored ApostrisAnalyzer code to be cleaner + easier to read
 - Contributed information to the Environment Demo powerpoint and video
-- Created archetecture for the implementation of the env demo states, rewards 
-To-Dos:
-- 
+- Created architecture for the implementation of the env demo states, rewards 
 
 **Stanny**
 - Edited and compiled the Environment Demo video
+- Completed full screen visualization overlay in "ScreenOverlay.py"
+- Contributed information to the Environment Demo powerpoint and video
+
 To-Dos:
-- 
+- We have issues regarding the Apostris anticheat when sending inputs into the game (limited by frames in-between inputs, or else flagged for cheating)
+- Scanning pixel values for contouring is extremely janky (requires scan for exact pixel value of block outlines)
+- Overall runtime is very slow due to constant screen scanning
+We need to find a long-term solution to quell these environment issues and have the ability to work on actual AI implementation
 
 # November 15th 2025 - Progress Update
 
-The past 2 weeks have been extremely daunting for us, as we ran into an issue with doing the Apostris screen analyzer technique where some blocks wouldn't be picked up from scans and the extremely-poor runtime of the entire system. Therefore, we made the hard decision to completely pivot off of Apostris for our environment, and swap entirely to a new system revolving around our own Tetris game, built from the ground up using Unity 2020.3.49f1. 
+The past 2 weeks have been extremely daunting for us, as we ran into an issue with using a screen scanner for Apostris as our environment. We had issues where some blocks wouldn't be picked up from scans, as well as the extremely-poor runtime of constantly parsing data from pixel-perfect screen scanning. The most glaring issue however was the fact that there was a built-in anti-cheat of Apotris that prevents players from making macro inputs every frame, meaning we could not have our AI interact with the game at peak efficiency. Therefore, we ultimately the hard decision to completely pivot off of Apostris for our environment, and swap entirely to a new system revolving around our own Tetris game, built from the ground up using Unity 2020.3.49f1. 
 This makes the previous python file of ApostrisAnalyzer deprecated. However, our AI is still being programmed in Python; our new method is to create a Socket-Signal server with the host being the new "StateServer.py" python file and the client being the Unity Tetris recreation. The Tetris client connects to the python file and sends JSON data of the state-space for our AI to use.
 Link to house-made Tetris repo: https://github.com/littlemanstann/COMP4010-UnityTetrisRecreation 
 
@@ -101,4 +103,11 @@ Ryan
 - Setup more reward functions for future improvments and use
 
 To-Dos:
-- Start AI devlopment :)
+- Start AI devlopment!!
+- Implement MDP AI with our new environment
+- Have Unity Tetris game send contour data to python files as a state-space
+- Implement proper action space based off contour state-space
+- Test various reward options:
+	- Height of tallest block (smaller height = greater reward)
+ 	- Lines cleared
+  	- Time taken per line clear
