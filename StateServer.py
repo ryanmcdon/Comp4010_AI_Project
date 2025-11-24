@@ -1,6 +1,11 @@
 import socket
 import json
 from pathlib import Path
+from reward_system import compute_reward
+import copy
+
+prev_grid = None  
+
 
 HOST = '127.0.0.1'  # Localhost
 PORT = 5000         # Same port used in Unity Tetris game
@@ -27,7 +32,7 @@ def start_server():
                     try:
                         payload = json.loads(message)
                         grid = payload.get("grid")
-                        lines_cleared = payload.get("lines_cleared")
+                        lines_cleared = payload.get("lines_cleared") or 0
                         
                         print("Received grid:")
                         # Pretty print the grid array on same line
@@ -37,6 +42,17 @@ def start_server():
                         
                         print("-----")
 
+                        #THIS IS WHERE REWARD SYSTEM IS CALLED
+                        #everytime unity sends information our way, we compute the reward based on the previous grid and new grid
+                        #please note, for a rewaerd to be computed, there must be a previous grid stored, so the first grid received will not generate a reward
+                        #what that means is for our current implementation, when we only send unity information when a line is cleared, the reward may not be super accurate
+                        #that is because the board changes in between line clears, but we are not sending that information, so the reward is only based on the grids when lines are cleared
+                        global prev_grid
+                        if prev_grid is not None:
+                            reward = compute_reward(prev_grid, grid, lines_cleared)
+                            print("Reward:", reward)
+
+                        prev_grid = copy.deepcopy(grid)
                         # Save to JSON file
                         with open(OUTPUT_FILE, "w") as f:
                             json.dump(grid, f)
