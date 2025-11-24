@@ -60,4 +60,4 @@ def board_height(grid):
         if any(grid[row][col] != 0 for col in range(cols)):
             return rows - row
 
-    return 0  
+    return 0
