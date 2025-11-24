@@ -18,12 +18,20 @@ class ScreenOverlay(QtWidgets.QMainWindow):
         self.setStyleSheet("background: transparent;")
 
         # Initialize variables
-        self.resize(111, 221)
         self.block_width = 10
         self.block_height = 20
         self.spacing = 11 # Spacing between blocks
+
+        # Initalize board size based on block variables
+        self.resize((self.block_width * self.spacing) + 1, (self.block_height * self.spacing) + 1)
         self.block_array = []
         self.grid_pixmap = None
+
+        # Contour variable
+        self.contour = []
+
+        # Example contour points (TEST)
+        self.contour = [10, 2, 4, -3, 0, 1, -1, 3, 0, -1]
 
         # Build the grid once
         self.generate_grid()
@@ -33,11 +41,11 @@ class ScreenOverlay(QtWidgets.QMainWindow):
         self.setCentralWidget(central_widget)
 
         # TEST: Update this over and over
-        '''
+        """
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.updateDots)
         self.timer.start(1000)
-        '''
+        """
         # QtCore.QTimer.singleShot(2000, lambda: self.update_window_location(400, 600))
 
     def update_window_location(self, x, y):
@@ -72,9 +80,10 @@ class ScreenOverlay(QtWidgets.QMainWindow):
             self.block_array.append(i)
         self.update()  # triggers paintEvent()
 
-    def setDots(self, block_array):
-        """Set the dot pattern based on external input"""
+    def setInfo(self, block_array, contour_array):
+        """Set the dot and contour array information based on external input"""
         self.block_array = block_array
+        self.contour = contour_array
         self.update()  # triggers paintEvent()
 
     # Paint the lines
@@ -95,8 +104,8 @@ class ScreenOverlay(QtWidgets.QMainWindow):
 
         """Draw dots based on block_array"""
         counter = 0
-        # Changes colour based on block_array values (0 = no dot, 1 = red dot, 2 = green dot)
-    
+        
+        # Changes colour of dot based on block_array values (0 = no dot, 1 = red dot, 2 = green dot)
         for y in range(self.block_height):
             for x in range(self.block_width):
                 if self.block_array[counter] == True:
@@ -107,6 +116,31 @@ class ScreenOverlay(QtWidgets.QMainWindow):
                     painter.drawEllipse(QtCore.QPointF((x * self.spacing) + self.spacing/2, (y * self.spacing) + self.spacing/2), 2, 2)
                 counter += 1
 
+        """Draw contour lines"""
+        red_pen = QtGui.QPen(QtGui.QColor(255, 0, 0, 255))
+        red_pen.setWidth(2)
+        painter.setPen(red_pen)
+
+        # Draw contour lines based on the contour array
+        # Draw on the grid overlay
+        height = self.contour[0]
+
+        for i in range(1, len(self.contour)):
+            # Make a flat line
+            start = QtCore.QPointF((i - 1) * self.spacing, height * self.spacing)
+            end = QtCore.QPointF(i * self.spacing, height * self.spacing)
+            painter.drawLine(start, end)
+            start = end
+
+            if self.contour[i] != 0:
+                height += self.contour[i]
+                end = QtCore.QPointF(i * self.spacing, height * self.spacing)
+                painter.drawLine(start, end)
+        
+        # Round off the final line to the edge of the screen
+        painter.drawLine(end, QtCore.QPointF(len(self.contour) * self.spacing, height * self.spacing))
+
+            
     def mousePressEvent(self, event):
         QtWidgets.qApp.quit()
 
