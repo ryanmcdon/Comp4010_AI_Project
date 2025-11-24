@@ -4,7 +4,7 @@ from pathlib import Path
 from reward_system import compute_reward
 import copy
 
-prev_grid = None  # add at top of file
+prev_grid = None  
 
 
 HOST = '127.0.0.1'  # Localhost
