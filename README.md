@@ -111,3 +111,24 @@ To-Dos:
 	- Height of tallest block (smaller height = greater reward)
  	- Lines cleared
   	- Time taken per line clear
+ 
+
+ 
+#November 30th, 2025 - Progress Report
+The past two weeks have been great for progression. After our switch from the Apotris screen-scanning to the new Unity-developed game, we had a lot of work ahead of us. On the unity front, we have developed a proper state space array, adjusted game settings and variables (7-block bag, compared to a completely random one), input handling, and migrated board space calculations from Python to Unity. On the AI front, we have made great progress. We first developed a basic framework for the reward system and action space, which allows us to modify reward calculations and easily scale our project for many different possible RL functions. From there, we meet up in person to discuss and start the implementation of RL algorithms. We developed multiple functional RL functions and were satisfied with our results. Then we began to develop our result demo! 
+
+
+
+Stanny
+- developed a proper state space array in Unity
+- adjusted game settings and variables in real time, when needed
+- input handling on Unity
+- migrated board space calculations from Python to Unity
+
+Aaron
+- Developed a basic framework for the reward system and action space
+- Developed the formatting and logic behind transferring  
+- Implemented RL!
+
+Ryan
+-Implemented RL!
