@@ -27,7 +27,7 @@ def start_server():
                     try:
                         payload = json.loads(message)
                         grid = payload.get("grid")
-                        lines_cleared = payload.get("lines_cleared")
+                        lines_cleared = payload.get("linesCleared")
                         
                         print("Received grid:")
                         # Pretty print the grid array on same line
@@ -38,10 +38,11 @@ def start_server():
                         print("-----")
 
                         # Save to JSON file
+                        '''
                         with open(OUTPUT_FILE, "w") as f:
                             json.dump(grid, f)
                         print(f"✅ Grid saved to {OUTPUT_FILE}")
-
+                        '''
 
                     except json.JSONDecodeError:
                         print("Received invalid JSON message (skipped).")
