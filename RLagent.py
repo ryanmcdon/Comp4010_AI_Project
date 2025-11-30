@@ -10,32 +10,34 @@ spec = env.behavior_specs[behavior_name]
 
 print("Connected to:", behavior_name)
 
-for episode in range(2000):
-    env.reset()
-    terminated = False
+try:
+    for episode in range(10):
+        env.reset()
 
-    while not terminated:
-        # Get current decision requests
-        decision_steps, terminal_steps = env.get_steps(behavior_name)
+        while True:
+            decision_steps, terminal_steps = env.get_steps(behavior_name)
 
-        # For agents needing a decision:
-        if len(decision_steps) > 0:
-            # OBSERVATIONS
-            obs = decision_steps.obs[0]  # first (and only) observation tensor
+            # If the agent ended last frame
+            if len(terminal_steps) > 0:
+                print("Episode ended")
+                break
 
-            # ----- YOUR RL ALGORITHM GOES HERE -----
-            # Example: Random policy
-            action = np.random.randint(0, spec.action_spec.discrete_branches[0], size=(len(decision_steps), 1))
-            # ---------------------------------------
+            # Make sure we have data to act on
+            if len(decision_steps) > 0:
+                '''
+                action = np.random.randint(
+                    spec.action_spec.discrete_branches[0],
+                    size=(len(decision_steps), 1)'''
+                branch_size = spec.action_spec.discrete_branches[0]
+                
+                actions = np.random.randint(branch_size, size=(len(decision_steps), 1))
+                env.set_actions(behavior_name, ActionTuple(discrete=actions))
 
-            action_tuple = ActionTuple(discrete=action)
-            env.set_actions(behavior_name, action_tuple)
+            env.step()
 
-        # Apply step
-        env.step()
+    # Check if episode ended
+    if len(terminal_steps) > 0:
+        terminated = True
 
-        # Check if episode ended
-        if len(terminal_steps) > 0:
-            terminated = True
-
-env.close()
+finally:
+    env.close()
