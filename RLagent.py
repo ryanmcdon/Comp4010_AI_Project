@@ -2,6 +2,7 @@ from mlagents_envs.environment import UnityEnvironment
 from mlagents_envs.base_env import ActionTuple
 import numpy as np
 import time
+from TetrisGreedy import greedy_policy
 # -------------------------------------------------
 # CONNECT TO UNITY
 # -------------------------------------------------
@@ -20,52 +21,51 @@ print("-" * 60)
 # Number of discrete actions (should be 6 for your TetrisAgent)
 n_actions = spec.action_spec.discrete_branches[0]
 
+
 # -------------------------------------------------
 # MAIN LOOP
 # -------------------------------------------------
+
+
 for episode in range(2000):
     print(f"\n========= EPISODE {episode} START =========")
     env.reset()
     terminated = False
+    episode_return = 0.0
 
     while not terminated:
-
-        # Get decision + terminal steps from Unity
         decision_steps, terminal_steps = env.get_steps(behavior_name)
 
-        # -------------------------------------------------
-        # If agent needs an action
-        # -------------------------------------------------
+        # --- take an action if agent is requesting one ---
         if len(decision_steps) > 0:
-            obs = decision_steps.obs[0]  # Get observation tensor
-            agent_ids = decision_steps.agent_id  # usually 1 agent
+            agent_ids = decision_steps.agent_id
+            obs = np.concatenate([o.flatten() for o in decision_steps.obs])  # assuming single observation
 
-            # Print first 10 obs values for debug
-            #print("[OBS] first 10 values:", obs.flatten()[:10])
+            action_val = greedy_policy(obs)
+            print("ACTION SELECTED:", action_val)
 
-            # Random action (0..n_actions-1)
-            #time.sleep(0.1)  # slight delay for readability
-            action_val = np.random.randint(0, n_actions)
-            #print("[ACT] sending action:", action_val)
 
-            # Send action in ML-Agents tuple format
             action_tuple = ActionTuple(
                 discrete=np.array([[action_val]])
             )
             env.set_actions(behavior_name, action_tuple)
 
-        # -------------------------------------------------
-        # Step environment
-        # -------------------------------------------------
+            # reward for this non-terminal step (if any)
+            # (usually per-step reward is on decision_steps)
+            episode_return += float(decision_steps.reward[0])
+            
+            print("OBS:", obs.flatten()[:10])
+
+        # step environment
         env.step()
 
-        # -------------------------------------------------
-        # Check if episode ended
-        # -------------------------------------------------
+        # check terminal
+        decision_steps, terminal_steps = env.get_steps(behavior_name)
+
         if len(terminal_steps) > 0:
-            reward = terminal_steps.reward
-            print("[DONE] Episode ended with reward:", reward)
+            # add reward from the final step too
+            episode_return += float(terminal_steps.reward[0])
+            print("[RET]  Episode cumulative reward:", episode_return)
             terminated = True
 
-# Close Unity
 env.close()
