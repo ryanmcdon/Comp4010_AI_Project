@@ -6,3 +6,6 @@
 *.bmp
 *.tiff
 
+a3env/
+venv/
+.env/
