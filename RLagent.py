@@ -18,7 +18,7 @@ try:
             decision_steps, terminal_steps = env.get_steps(behavior_name)
 
             # If the agent ended last frame
-            if len(terminal_steps) > 0:
+            if len(terminal_steps) < 0:
                 print("Episode ended")
                 break
 
