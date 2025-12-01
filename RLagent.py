@@ -46,7 +46,7 @@ for episode in range(2000):
             # Random action (0..n_actions-1)
             #time.sleep(0.1)  # slight delay for readability
             action_val = np.random.randint(0, n_actions)
-            #print("[ACT] sending action:", action_val)
+            print("[ACT] sending action:", action_val)
 
             # Send action in ML-Agents tuple format
             action_tuple = ActionTuple(
