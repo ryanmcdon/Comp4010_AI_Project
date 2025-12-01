@@ -56,6 +56,7 @@ def _contour_to_state_number(contour):
     # Clip unbounded values to the range [-4, +4]
     mapped = np.clip(contour_short, -4, 4) + 4  # range now [0, 8]
 
+
     # Convert to state number (base-9 number)
     state_number = 0
     for i, val in enumerate(mapped):
@@ -64,14 +65,15 @@ def _contour_to_state_number(contour):
     return state_number
 
 
-def featurize_board(board, piece_id=None, n_bins=1000):
+def featurize_board(board, piece_id=None, move_number=None, n_bins=1000):
     """
     Featurize a 20x10 Tetris board into a state index in range [0, n_bins-1].
-    Uses only 2 features: contour state ID and active piece ID.
+    Uses 3 features: contour state ID, active piece ID, and move number.
     
     Args:
         board: 20x10 numpy array representing the Tetris board
         piece_id: Current active piece ID (optional, defaults to 0 if None)
+        move_number: Move number (0-5) (optional, defaults to 0 if None)
         n_bins: Number of bins for state space discretization
     """
     board = np.array(board).reshape((20, 10))
@@ -81,23 +83,34 @@ def featurize_board(board, piece_id=None, n_bins=1000):
         piece_id = 0
     else:
         piece_id = int(piece_id)
+    
+    # Normalize move_number (handle None case and ensure it's an integer in range 0-5)
+    if move_number is None:
+        move_number = 0
+    else:
+        move_number = int(move_number)
+        # Ensure move_number is in valid range [0, 5]
+        move_number = np.clip(move_number, 0, 5)
 
     # Get contour and compute state ID using old contour state function
     contour = board_contour_unbounded(board)  # Length 9 array
     contour_state = _contour_to_state_number(contour)
 
-    # Only 2 features: contour_state and piece_id
+    # 3 features: contour_state, piece_id, and move_number
     feature_vec = np.array([
         contour_state,                  # Contour state number (base-9 encoding, range [-4, +4])
         piece_id,                       # Active piece ID
+        move_number,                    # Move number (0-5)
     ])
 
     # Normalize features
     # Contour state: base-9 encoding with 9 values = 9^9 possible states
     # Piece ID: assuming max 10 piece types
+    # Move number: range 0-5 (6 possible values)
     max_values = np.array([
         9**9,     # contour_state (base-9 encoding, 9 values: 0 to 9^9-1)
         10,       # piece_id (normalize assuming max 10 piece types)
+        6,        # move_number (range 0-5, so max is 5, normalize with 6)
     ]) + 1e-8
     
     norm_vec = np.clip(feature_vec / max_values, 0, 1)

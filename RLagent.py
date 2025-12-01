@@ -41,7 +41,7 @@ def randomAgent(env, possible_actions, behavior_name, gama = 0.99, epsilon = 0.1
         terminated = False
 
         while not terminated:
-
+            
             # Get decision + terminal steps from Unity
             decision_steps, terminal_steps = env.get_steps(behavior_name)
 
@@ -53,7 +53,7 @@ def randomAgent(env, possible_actions, behavior_name, gama = 0.99, epsilon = 0.1
                 agent_ids = decision_steps.agent_id  # usually 1 agent
 
                 board, current_piece_id, reward1, reward2 = parse_observation(obs)
-                print("Board:", board)
+                # print("Board:", board)
                 print("Current Piece ID:", current_piece_id)
                 # Use new featurizer instead of old contouring functions
                 state_idx = featurize_board(board, piece_id=current_piece_id, n_bins=n_bins)
@@ -61,7 +61,7 @@ def randomAgent(env, possible_actions, behavior_name, gama = 0.99, epsilon = 0.1
                 print("-" * 40)
   
 
-                
+                print("reward:", reward)
 
                 # Select a random action from possible_actions
                 action_idx = np.random.randint(0, len(possible_actions))
@@ -119,7 +119,7 @@ def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon
     # Using featurize_board to map board states to n_bins discrete states
     # Using float32 to reduce memory usage (half the size of float64)
     policy_matrix = np.random.rand(n_bins, len(possible_actions)).astype(np.float32)
-    print("Policy matrix shape:", policy_matrix.shape)
+    # print("Policy matrix shape:", policy_matrix.shape)
     print(f"Using epsilon-greedy policy with epsilon={epsilon}")
     
     # ------------------------------------------------- 
@@ -130,28 +130,40 @@ def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon
         print("Policy matrix:", policy_matrix)
         env.reset()
         terminated = False
-
         while not terminated:
 
             # Get decision + terminal steps from Unity
             decision_steps, terminal_steps = env.get_steps(behavior_name)
-
+            currentpiece = -1
+            move_number = 0
             # -------------------------------------------------
             # If agent needs an action
             # -------------------------------------------------
             if len(decision_steps) > 0:
                 obs = decision_steps.obs[0]  # Get observation tensor
                 agent_ids = decision_steps.agent_id  # usually 1 agent
-
+ 
                 board, current_piece_id, reward1, reward2 = parse_observation(obs)
-                print("Board:", board)
+                print("reward:", reward1)
+                if currentpiece == -1:
+                    currentpiece = current_piece_id
+                else:
+                    if currentpiece != current_piece_id:
+                        currentpiece = current_piece_id
+                        move_number = 0
+                    elif move_number < 5:
+                        move_number += 1
+                    else:
+                        move_number = 0    
+                
+                #print("Board:", board)
                 print("Current Piece ID:", current_piece_id)
+                print(("reward:", reward1))
                 # Use new featurizer instead of old contouring functions
-                state_idx = featurize_board(board, piece_id=current_piece_id, n_bins=n_bins)
+                state_idx = featurize_board(board, piece_id=current_piece_id, move_number=move_number, n_bins=n_bins)
                 
                 print("-" * 40)
                 print("State index:", state_idx)
-  
                 # Epsilon-greedy action selection
                 if np.random.random() < epsilon:
                     # Exploration: select a random action
@@ -241,7 +253,7 @@ def run_policy_matrix(env, policy_matrix, possible_actions, behavior_name, n_epi
                 agent_ids = decision_steps.agent_id
                 
                 board, current_piece_id, reward1, reward2 = parse_observation(obs)
-                
+                print("reward:", reward1)
                 # Featurize the board to get the state index
                 state_idx = featurize_board(board, piece_id=current_piece_id, n_bins=n_bins)
                 
