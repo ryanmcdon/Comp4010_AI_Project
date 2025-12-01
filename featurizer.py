@@ -7,6 +7,7 @@ def board_contour_unbounded(board):
     Returns unbounded differences (not clipped to [-3, +2]).
     Returns a length-9 array of differences between adjacent columns.
     Uses the bottommost filled cell (max row index) for each column, like the original.
+    Both 0's and 3's are considered blank spaces - only values > 0 and != 3 are considered filled.
     """
     board = np.array(board)
     rows, cols = board.shape
@@ -15,7 +16,10 @@ def board_contour_unbounded(board):
     
     for col in range(cols):
         column = board[:, col]
-        filled = np.where(column > 0)[0]
+        # Consider both 0's and 3's as blank spaces - only count filled cells that are > 0 and != 3
+        filled = np.where((column > 0) & (column != 3))[0]
+        # print("Column:", column)
+        # print("Filled:", filled)
         # Use max (bottommost) filled cell, or rows if column is empty
         current_height = filled.max() if len(filled) > 0 else rows
         

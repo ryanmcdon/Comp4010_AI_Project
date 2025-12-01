@@ -34,7 +34,7 @@ def randomAgent(env, possible_actions, behavior_name, gama = 0.99, epsilon = 0.1
     # ------------------------------------------------- 
     # MAIN LOOP
     # -------------------------------------------------
-    for episode in range(2000):
+    for episode in range(max_episodes):
         print(f"\n========= EPISODE {episode} START =========")
         print("Policy matrix:", policy_matrix)
         env.reset()
@@ -105,9 +105,213 @@ def randomAgent(env, possible_actions, behavior_name, gama = 0.99, epsilon = 0.1
     return reward
 
 
+# An epsilon-greedy agent that uses the policy matrix to select actions
+def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon=0.1, max_episodes=400, n_bins=1000):
+    """
+    Epsilon-greedy agent that selects actions based on the policy matrix.
+    With probability epsilon, selects a random action (exploration).
+    With probability (1-epsilon), selects the best action according to the policy matrix (exploitation).
+    
+    Returns:
+        policy_matrix: The optimized policy matrix after training, shape (n_bins, len(possible_actions))
+    """
+    # Policy matrix initialization: shape (n_bins, actionspace=len(possible_actions))
+    # Using featurize_board to map board states to n_bins discrete states
+    # Using float32 to reduce memory usage (half the size of float64)
+    policy_matrix = np.random.rand(n_bins, len(possible_actions)).astype(np.float32)
+    print("Policy matrix shape:", policy_matrix.shape)
+    print(f"Using epsilon-greedy policy with epsilon={epsilon}")
+    
+    # ------------------------------------------------- 
+    # MAIN LOOP
+    # -------------------------------------------------
+    for episode in range(max_episodes):
+        print(f"\n========= EPISODE {episode} START =========")
+        print("Policy matrix:", policy_matrix)
+        env.reset()
+        terminated = False
+
+        while not terminated:
+
+            # Get decision + terminal steps from Unity
+            decision_steps, terminal_steps = env.get_steps(behavior_name)
+
+            # -------------------------------------------------
+            # If agent needs an action
+            # -------------------------------------------------
+            if len(decision_steps) > 0:
+                obs = decision_steps.obs[0]  # Get observation tensor
+                agent_ids = decision_steps.agent_id  # usually 1 agent
+
+                board, current_piece_id, reward1, reward2 = parse_observation(obs)
+                # print("Board:", board)
+                # print("Current Piece ID:", current_piece_id)
+                # Use new featurizer instead of old contouring functions
+                state_idx = featurize_board(board, piece_id=current_piece_id, n_bins=n_bins)
+                
+                print("-" * 40)
+                print("State index:", state_idx)
+  
+                # Epsilon-greedy action selection
+                if np.random.random() < epsilon:
+                    # Exploration: select a random action
+                    action_idx = np.random.randint(0, len(possible_actions))
+                    print(f"Exploring: selected random action {action_idx}")
+                else:
+                    # Exploitation: select the action with the highest value in the policy matrix
+                    action_values = policy_matrix[state_idx, :]
+                    action_idx = np.argmax(action_values) # +1 because the action_values are 0-indexed but the possible_actions are 1-indexed
+                    print(f"Exploiting: selected best action {action_idx} with value {action_values[action_idx]:.4f}")
+                
+                action_val = possible_actions[action_idx]
+                    
+                # Update the policy matrix based on the reward received for the action
+                
+                # This is similar to a value update but not a full RL algorithm
+                if len(terminal_steps) > 0:
+                    # Use the true reward at the end of the episode
+                    reward = terminal_steps.reward[0] if hasattr(terminal_steps.reward, "__getitem__") else terminal_steps.reward
+                else:
+                    # Use intermediate reward if available
+                    reward = reward1
 
 
+                # Basic update rule: nudges the value estimate for this state-action pair toward the received reward
+                # Learning rate alpha is set arbitrarily small
+                alpha = 0.1
+                policy_matrix[state_idx, action_idx] = policy_matrix[state_idx, action_idx] + alpha * (reward - policy_matrix[state_idx, action_idx])
 
+                action_tuple = ActionTuple(
+                    discrete=np.array([[action_val]])
+                )
+                env.set_actions(behavior_name, action_tuple)
+
+            # -------------------------------------------------
+            # Step environment
+            # -------------------------------------------------
+            env.step()
+
+            # -------------------------------------------------
+            # Check if episode ended
+            # -------------------------------------------------
+            if len(terminal_steps) > 0:
+                reward = terminal_steps.reward
+                print("[DONE] Episode ended with reward:", reward)
+                terminated = True
+    return policy_matrix
+
+
+def run_policy_matrix(env, policy_matrix, possible_actions, behavior_name, n_episodes=10, n_bins=1000):
+    """
+    Runs a trained policy matrix greedily in the environment to evaluate its performance.
+    Uses pure exploitation (no exploration) to display how well the optimized policy performs.
+    Useful for comparing different training methods.
+    
+    Args:
+        env: Unity environment instance
+        policy_matrix: Trained policy matrix, shape (n_bins, len(possible_actions))
+        possible_actions: List of possible action values
+        behavior_name: Name of the behavior in the environment
+        n_episodes: Number of episodes to run for evaluation
+        n_bins: Number of bins used for state space discretization (must match policy_matrix)
+    
+    Returns:
+        results: Dictionary containing performance metrics (total_reward, avg_reward, episode_rewards)
+    """
+    print(f"\n{'='*60}")
+    print(f"EVALUATING POLICY MATRIX - Running {n_episodes} episodes")
+    print(f"{'='*60}")
+    
+    episode_rewards = []
+    total_steps = 0
+    
+    for episode in range(n_episodes):
+        print(f"\n--- Episode {episode + 1}/{n_episodes} ---")
+        env.reset()
+        terminated = False
+        episode_reward = 0
+        episode_steps = 0
+        
+        while not terminated:
+            # Get decision + terminal steps from Unity
+            decision_steps, terminal_steps = env.get_steps(behavior_name)
+            
+            if len(decision_steps) > 0:
+                obs = decision_steps.obs[0]
+                agent_ids = decision_steps.agent_id
+                
+                board, current_piece_id, reward1, reward2 = parse_observation(obs)
+                
+                # Featurize the board to get the state index
+                state_idx = featurize_board(board, piece_id=current_piece_id, n_bins=n_bins)
+                
+                # Get greedy action from policy matrix (pure exploitation, no exploration)
+                action_values = policy_matrix[state_idx, :]
+                action_idx = np.argmax(action_values)
+                action_val = possible_actions[action_idx]
+                
+                # Get reward
+                if len(terminal_steps) > 0:
+                    reward = terminal_steps.reward[0] if hasattr(terminal_steps.reward, "__getitem__") else terminal_steps.reward
+                else:
+                    reward = reward1
+                
+                episode_reward += reward
+                episode_steps += 1
+                
+                # Execute action
+                action_tuple = ActionTuple(
+                    discrete=np.array([[action_val]])
+                )
+                env.set_actions(behavior_name, action_tuple)
+            
+            # Step environment
+            env.step()
+            
+            # Check if episode ended
+            if len(terminal_steps) > 0:
+                reward = terminal_steps.reward
+                if hasattr(reward, "__getitem__"):
+                    reward = reward[0]
+                episode_reward += reward
+                print(f"  Episode ended with total reward: {episode_reward:.2f} (steps: {episode_steps})")
+                terminated = True
+        
+        episode_rewards.append(episode_reward)
+        total_steps += episode_steps
+    
+    # Calculate statistics
+    total_reward = sum(episode_rewards)
+    avg_reward = total_reward / n_episodes
+    max_reward = max(episode_rewards)
+    min_reward = min(episode_rewards)
+    std_reward = np.std(episode_rewards)
+    
+    # Display results
+    print(f"\n{'='*60}")
+    print("POLICY MATRIX EVALUATION RESULTS")
+    print(f"{'='*60}")
+    print(f"Episodes run: {n_episodes}")
+    print(f"Total reward: {total_reward:.2f}")
+    print(f"Average reward per episode: {avg_reward:.2f}")
+    print(f"Max reward: {max_reward:.2f}")
+    print(f"Min reward: {min_reward:.2f}")
+    print(f"Std deviation: {std_reward:.2f}")
+    print(f"Average steps per episode: {total_steps / n_episodes:.1f}")
+    print(f"\nEpisode rewards: {[f'{r:.2f}' for r in episode_rewards]}")
+    print(f"{'='*60}\n")
+    
+    results = {
+        'total_reward': total_reward,
+        'avg_reward': avg_reward,
+        'max_reward': max_reward,
+        'min_reward': min_reward,
+        'std_reward': std_reward,
+        'episode_rewards': episode_rewards,
+        'n_episodes': n_episodes
+    }
+    
+    return results
 
 
 def parse_observation(obs):
@@ -129,98 +333,6 @@ def parse_observation(obs):
     else:
         current_piece_id, reward1, reward2 = None, None, None
     return board, current_piece_id, reward1, reward2
-
-
-# OLD CONTOURING FUNCTIONS - COMMENTED OUT, USING featurize_board INSTEAD
-# def board_contour(board):
-#     """
-#     Given a 20x10 numpy array (values 0 or 1), return the 'contour':
-#     A length-10 array where the i-th entry is the lowest (largest row index)
-#     such that board[row, i] == 1, or -1 if none exists in that column.
-#     The contour is measured from the top (row 0) to bottom (row 19).
-#     """
-#     board = np.array(board)
-#     rows, cols = board.shape
-#     contour = np.full(cols-1, -1, dtype=int)
-#     prev = 0
-#     for col in range(cols):
-#         ones_idx = np.where(board[:, col] != 0)[0]
-#         diff = 0
-#         if len(ones_idx) > 0:
-#             # Calculate difference with previous column's height and bound to [-3, +2]
-#             if col != 0:
-#                 if prev == -1 or len(ones_idx) == 0:
-#                     diff = 0
-#                 else:
-#                     diff = prev - ones_idx.max()
-#                     diff = max(-3, min(2, diff))
-#             contour[col-1] = diff
-#             prev = ones_idx.max()
-# #            contour[col] = ones_idx.max()
-#     return contour
-
-
-# def _contour_to_state_number(contour):
-#     """
-#     Helper function: Convert a contour array to a state number without canonicalization.
-#     """
-#     base = 6
-#     max_len = 9
-
-#     # Truncate or pad contour to length 9
-#     contour = np.array(contour)
-#     if contour.shape[0] > max_len:
-#         contour_short = contour[:max_len]
-#     elif contour.shape[0] < max_len:
-#         # pad with zeros
-#         contour_short = np.pad(contour, (0, max_len - contour.shape[0]), 'constant')
-#     else:
-#         contour_short = contour
-
-#     # Map from [-3, +2] -> [0, 5] (base-6 encoding)
-#     mapped = np.clip(contour_short, -3, 2) + 3
-
-#     # Convert to state number (base-6 number)
-#     state_number = 0
-#     for i, val in enumerate(mapped):
-#         state_number += int(val) * (base ** i)
-
-#     return state_number
-
-
-# def contour_to_state(contour):
-#     """
-#     Given a 9-element (9x1) contour array, compute a canonical state number.
-#     Mirrored states are mapped to the same canonical state (the lexicographically smaller one).
-#     This reduces the state space by approximately half.
-#     
-#     Returns:
-#         tuple: (canonical_state_number, is_mirrored)
-#             - canonical_state_number: The canonical state number (0..~6^9/2)
-#             - is_mirrored: Boolean indicating if the mirror was used to get the canonical state
-#     """
-#     contour = np.array(contour)
-#     
-#     # Compute state number for original contour
-#     state_original = _contour_to_state_number(contour)
-#     
-#     # Compute state number for mirrored contour (reversed)
-#     contour_mirrored = np.flip(contour)
-#     state_mirrored = _contour_to_state_number(contour_mirrored)
-#     
-#     # Use the smaller state number as canonical (reduces state space by ~half)
-#     if state_mirrored < state_original:
-#         return state_mirrored, True
-#     else:
-#         return state_original, False
-
-
-# #returns the action mirrored (for when the state was mirrored)
-# def mirror_action(action):
-#     canonical_actions = [0, 1, 2, 3, 4, 5]
-#     mirrored_actions = [0, 2, 1, 3, 4, 5]
-#     return mirrored_actions[action]
-
 
 
 
@@ -245,7 +357,11 @@ print("Possible actions:", behavior_name)
 # Number of discrete actions (should be 6 for your TetrisAgent)
 n_actions = spec.action_spec.discrete_branches[0]
 
-randomAgent(env,possible_actions,behavior_name) # Call the randomAgent function
+policy_matrix = epsilonGreedyAgent(env,possible_actions,behavior_name) # Call the epsilonGreedyAgent function
+print("Policy matrix: test run")
+run_policy_matrix(env,policy_matrix,possible_actions,behavior_name) # Call the run_policy_matrix function
+#randomAgent(env,possible_actions,behavior_name) # Call the randomAgent function
+
 
 # Close Unity
 env.close()
