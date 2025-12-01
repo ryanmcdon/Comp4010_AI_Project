@@ -144,8 +144,8 @@ def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon
                 agent_ids = decision_steps.agent_id  # usually 1 agent
 
                 board, current_piece_id, reward1, reward2 = parse_observation(obs)
-                # print("Board:", board)
-                # print("Current Piece ID:", current_piece_id)
+                print("Board:", board)
+                print("Current Piece ID:", current_piece_id)
                 # Use new featurizer instead of old contouring functions
                 state_idx = featurize_board(board, piece_id=current_piece_id, n_bins=n_bins)
                 
