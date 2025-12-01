@@ -38,6 +38,10 @@ class ApotrisAnalyzer:
         
         return windows
     
+
+    """
+    Determines the Appotris window based on the names of all open windows
+    """
     def find_window_by_name(self, window_name):
         """
         Find a window by its title/name
@@ -68,11 +72,12 @@ class ApotrisAnalyzer:
             else:
                 self.list_all_windows()
                 return None, None
+
     
+    """
+    Capture a screenshot of the specified window
+    """
     def capture_window_screenshot(self, window_handle, window_rect):
-        """
-        Capture a screenshot of the specified window
-        """
         try:
             # Bring window to front
             win32gui.SetForegroundWindow(window_handle)
@@ -96,72 +101,45 @@ class ApotrisAnalyzer:
             print(f"Error capturing window screenshot: {e}")
             return None
     
-    def analyze_for_game_area(self, screenshot):
-        """
-        Analyze the screenshot to find game area surrounded by black pixels
-        Improved to handle window borders and UI elements
-        """
-        try:
-            # Convert PIL image to numpy array
-            img_array = np.array(screenshot)
-            height, width = img_array.shape[:2]
-            
-            # Convert to grayscale for easier analysis
-            gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-            
-            # Method 1: Look for rectangular game area with black borders
-            game_coords = self._find_game_area_by_borders(gray, width, height)
-            
-            if game_coords:
-                # Save coordinates to persistent variable
-                self.game_coordinates = game_coords
-                
-                if print_flag:
-                    print(f"Game area found using border detection:")
-                    print(f"  Top-left: {game_coords['top_left']}")
-                    print(f"  Bottom-right: {game_coords['bottom_right']}")
-                    print(f"  Center: {game_coords['center']}")
-                    print(f"  Size: {game_coords['width']}x{game_coords['height']} pixels")
-                    print(f"  Area: {game_coords['area']} pixels")
-                return game_coords
-            else:
-                if print_flag:
-                    print("No game area found with any detection method")
-                return None
-                
-        except Exception as e:
-            print(f"Error analyzing image: {e}")
-            return None
-    
     
     """
-    Find game area by detecting where non-black pixels start (game content)
+    Gets the screenshot, puts a filter on the image 
     """
-    def _find_game_area_by_borders(self, gray_image, width, height):
-        # Define black threshold (adjust based on your game)
+    def analyze_game_area(self, screenshot):
+        # Convert PIL image to numpy array
+        img_array = np.array(screenshot)
+        height, width = img_array.shape[:2]
+        
+        # Convert to grayscale for easier analysis
+        gray_image = img_array
+        
+        # Method 1: Look for rectangular game area with black borders           
+            # Define black threshold (adjust based on your game)
         black_threshold = 50 # the value of a black pixel
         threshold = 0.2
-        
+
         # Skip window borders - start analysis from inner area
         border_margin = 50  # Skip first 50 pixels from edges
         start_x = border_margin
         start_y = border_margin
         end_x = width - border_margin
         end_y = height - border_margin
-        
+
         # Look for where game content starts (non-black pixels)
-        game_start_y = None
-        game_end_y = None
-        
-        # Scan from top to find first significant non-black line (game content starts)
-        for y in range(start_y, end_y - border_margin*2):
-            row = gray_image[y, start_x:end_x]
-            non_black_pixels = np.sum(row >= black_threshold)
-            total_pixels = len(row)
-            
-            # If more than 20% of pixels in this row are non-black, game content likely starts here
-            if non_black_pixels / total_pixels > threshold:
-                game_start_y = y
+        game_start_y = 1
+        game_end_y = 1
+        TESTERX = None
+        TESTERy= None
+        for y in range(start_y + border_margin, end_y - border_margin):
+            for x in range(start_x + border_margin, end_x - border_margin):
+                if not self.is_not_white(img_array[y, x]):  
+                    TESTERX = x
+                    TESTERy = y
+                    print('The starting pixel, from analyze game area', TESTERy ,",",TESTERX)
+                    print(img_array[TESTERX,TESTERy])
+                    break  
+
+            if TESTERX is not None:
                 break
         
         # Scan from bottom to find last significant non-black line (game content ends)
@@ -173,11 +151,11 @@ class ApotrisAnalyzer:
             if non_black_pixels / total_pixels > threshold:
                 game_end_y = y
                 break
-        
+
         # Look for where game content starts horizontally (left and right edges)
-        game_start_x = None
-        game_end_x = None
-        
+        game_start_x = 1
+        game_end_x = 1
+
         # Scan from left to find first significant non-black line
         for x in range(start_x, end_x - border_margin*2):
             col = gray_image[game_start_y:game_end_y, x]
@@ -187,7 +165,7 @@ class ApotrisAnalyzer:
             if non_black_pixels / total_pixels > threshold:
                 game_start_x = x
                 break
-        
+
         # Scan from right to find last significant non-black line
         for x in range(end_x - 1, start_x + border_margin*2, -1):
             col = gray_image[game_start_y:game_end_y, x]
@@ -197,32 +175,38 @@ class ApotrisAnalyzer:
             if non_black_pixels / total_pixels > threshold:
                 game_end_x = x
                 break
-        
+
 
         game_x = game_start_x + 1
         game_y = game_start_y + 1
         game_w = game_end_x - game_start_x - 2 * 1
         game_h = game_end_y - game_start_y - 2 * 1
-        
+
 
         center_x = game_x + game_w // 2
         center_y = game_y + game_h // 2
-                
-        return {
-            'top_left': (game_x, game_y),
-            'bottom_right': (game_x + game_w, game_y + game_h),
+
+        self.game_coordinates =  {
+            'top_left': (TESTERX, TESTERX),
+            'bottom_right': (TESTERX + 100, TESTERy + 200),
             'center': (center_x, center_y),
             'width': game_w,
             'height': game_h,
             'area': game_w * game_h
-            }
-        
-        return None
-
+            }   
+                
+        return {
+            'top_left': (TESTERX, TESTERy),
+            'bottom_right': (TESTERX + 100, TESTERy + 200),
+            'center': (center_x, center_y),
+            'width': game_w,
+            'height': game_h,
+            'area': game_w * game_h
+            }   
 
 
     """
-    Create a visualization showing the detected game area
+    Create a visualization of the detected game board. Used for non logical implementations, just visuals
     """
     def visualize_game_area(self, screenshot, game_coords):
 
@@ -240,8 +224,8 @@ class ApotrisAnalyzer:
             # Find the top left corner of tetris board
             x , y = game_coords['top_left']
             offset = 4
-            x+=273 # center on block
-            y+=224+offset
+            x+=5 # center on block
+            y+=5
             separation = 10 
             # Draw point
             colors = [] # array of colors 
@@ -255,7 +239,7 @@ class ApotrisAnalyzer:
                             (255, 0, 0),  # Red color
                             -1)  # Filled circle
                     x+=separation
-                x = game_coords['top_left'][0]+273
+                x = game_coords['top_left'][0]
                 y+=separation
         
             file = open("pixel_colors.txt", "w")  
@@ -291,13 +275,17 @@ class ApotrisAnalyzer:
             return None
     
     
-    #finds if colour is blackground or not (third pixel value of is 42 if backgroud, added some buffer for error)
-    def is_backgroud(self, colour):
+    """
+    Determine if a pixel is in range of background colours
+    """
+    def is_backgroud_RGB(self, colour):
         if colour[2] >= 41 and colour[2]<=55:
             return True
         return False
     
-    #takes in screenshot and game coords returns a board of active pieces
+    """
+    Checks the screen in blocks, determine if it is background based on colour
+    """
     def get_board(self, screenshot, game_coords):
         img_array = np.array(screenshot)
         x , y = game_coords['top_left']
@@ -307,19 +295,27 @@ class ApotrisAnalyzer:
         board = [] 
         for j in range(10):
             for i in range(20):
-                square = self.is_backgroud(img_array[y, x])
+                square = self.is_backgroud_RGB(img_array[y, x])
                 board.append(square)
                 y+=separation
             x+=separation
             y=game_coords['top_left'][1]+224
         return board
     
+    
+    """
+    Determines if a pixel is in range of Tetris block border
+    """
     def is_not_white(self, colour):
         if colour[0] >= 220 and colour[1] >= 220 and colour[2] >= 220:
             return False
         return True
     
-    def get_board_white(self, screenshot, game_coords):
+
+    """
+    Determines the boarders of the fallen pieces based on their white borders
+    """
+    def find_fallen_peice_border(self, screenshot, game_coords):
         img_array = np.array(screenshot)
         x , y = game_coords['top_left']
         offset = 4
@@ -336,6 +332,9 @@ class ApotrisAnalyzer:
             y=game_coords['top_left'][1]+224+offset
         return board
     
+    """
+    Prints the board
+    """
     def print_board(self, board):
         for i in range(len(board)):
             if i%20 == 0 and i != 0:
@@ -343,7 +342,10 @@ class ApotrisAnalyzer:
             print(board[i], end="\t")
         print()
         
-    def countour_detection(self, board):
+    """
+    Calculates the countour based of off the top row of fallen blocks
+    """
+    def contour_calculator(self, board):
         contour = []
         height = 0
         column = False
@@ -367,60 +369,10 @@ class ApotrisAnalyzer:
         # print(contour)
         return contour
         
-    #takes in a board and returns the contour
-    #finds the contour of the board, returns active piece and board
-    #change to take in a board and return the contour
-    # def countour_detection(self, screenshot, game_coords):
-            # img_array = np.array(screenshot)
-            # x , y = game_coords['top_left']
-            # x+=273# center on block
-            # y+=224
-            # separation = 10 
-            # board = [] 
-            # contour = []
-            # height = 0
-            # column = False
-            # for j in range(10):
-            #     for i in range(20): 
-            #         # Get the color at the current (x, y) pixel
-            #         square = self.is_backgroud(img_array[y, x])
-            #         board.append(square)
-            #         if square == False and j == 0 and column == False:
-            #             height = i
-            #             column = True
-            #         elif square == False and j > 0 and column == False:
-            #             contour.append( max(min(height-i, 4), -4))
-            #             height = i
-            #             column = True
-            #         y+=separation
-            #     if column == True:
-            #         column = False
-            #     else:
-            #         contour.append(max(min(height-i, 4), -4))
-            #         height = 0
 
-            #     x+=separation
-            #     y=game_coords['top_left'][1]+224
-
-            # print(contour)
-            # #file = open("board.txt", "w")  
-            # string = ""
-            # for i in range(len(board)):
-            #     if i%20 == 0 and i != 0:
-            #         print(string)
-            #         #file.write(string + "\n")
-            #         string = ""
-            #     if board[i] == True:
-            #         string += " - " + "\t"
-            #     else:
-            #         string += "Block" + "\t"
-            # print(string)
-            # #file.write(string)
-            # #file.close()
-            
-            # self.create_binary_board(board)
-            # return board
-
+    """
+    Converts game board into an array of 1's and 0's, for testing
+    """
     def create_binary_board(self, board):
         grid_rows = [board[i*10:(i+1)*10] for i in range(20)]
 
@@ -432,10 +384,12 @@ class ApotrisAnalyzer:
         return binary_grid
 
 
-    def create_debug_visualization(self, screenshot):
-        """
+
+    """
         Create debug visualization showing border detection process
-        """
+    """
+    def create_debug_visualization(self, screenshot):
+
         try:
             img_array = np.array(screenshot)
             height, width = img_array.shape[:2]
@@ -468,18 +422,22 @@ class ApotrisAnalyzer:
             print(f"Error creating debug visualization: {e}")
             return None
     
-    #Main method to run the complete analysis without visualization
-    #used to simplify process for repeated calls
-    
+    """
+    Main method to run the complete analysis without visualization
+    used to simplify process for repeated calls
+    """
     def get_board_state(self):
         print_flag = False
         self.window_handle, self.window_rect = self.find_window_by_name(self.target_window_name)
         screenshot = self.capture_window_screenshot(self.window_handle, self.window_rect)
-        self.game_coordinates = self.analyze_for_game_area(screenshot)
+        self.game_coordinates = self.analyze_game_area(screenshot)
         board = self.get_board(screenshot, self.game_coordinates)
-        contour = self.countour_detection(board)
+        contour = self.contour_calculator(board)
         return contour
     
+    """
+    Used for visualization of the analyzer, not used for implementation as prints slow the machine down
+    """
     def run_analysis_no_visualization(self):
         print_flag = False
         
@@ -499,15 +457,15 @@ class ApotrisAnalyzer:
             return False
         
         # Step 2: Analyze for game area
-        self.game_coordinates = self.analyze_for_game_area(screenshot)
+        self.game_coordinates = self.analyze_game_area(screenshot)
         
         if not self.game_coordinates:
             print("No game area detected")
             return False
         
         #step 3: Analyse for pieces and contour
-        white_board = self.get_board_white(screenshot, self.game_coordinates)
-        contour = self.countour_detection(white_board)
+        white_board = self.find_fallen_peice_border(screenshot, self.game_coordinates)
+        contour = self.contour_calculator(white_board)
         board = self.get_board(screenshot, self.game_coordinates)
         
         return {
@@ -517,11 +475,10 @@ class ApotrisAnalyzer:
             'board': board
         }
         
-    
-    def run_analysis(self):
-        """
-        Main method to run the complete analysis
-        """
+    """
+    Main method to run the complete analysis
+    """
+    def run_analysis_tester(self):
         print(f"Looking for window: '{self.target_window_name}'")
         
         # Step 1: Find the window
@@ -545,21 +502,22 @@ class ApotrisAnalyzer:
         
         # Step 3: Analyze for game area
         print("Analyzing image for game area...")
-        self.game_coordinates = self.analyze_for_game_area(screenshot)
+        self.game_coordinates = self.analyze_game_area(screenshot)
         
         if not self.game_coordinates:
             print("No game area detected")
             return False
         
         # Step 4: Create visualization
+        self.create_debug_visualization(screenshot)
         print("Creating visualization...")
         # board = self.get_board(screenshot, self.game_coordinates)
         # self.print_board(board)
         self.visualize_game_area(screenshot, self.game_coordinates)
-        # self.countour_detection(board)
-        white_board = self.get_board_white(screenshot, self.game_coordinates)
+        # self.contour_calculator(board)
+        white_board = self.find_fallen_peice_border(screenshot, self.game_coordinates)
         self.print_board(white_board)
-        contour = self.countour_detection(white_board)
+        contour = self.contour_calculator(white_board)
         
         # Step 5: Convert to screen coordinates
         screen_coords = self.convert_to_screen_coordinates(self.game_coordinates)
@@ -584,9 +542,12 @@ class ApotrisAnalyzer:
             'contour': contour
         }
     
+    """
+    Convert window-relative coordinates to screen coordinates
+    """
     def convert_to_screen_coordinates(self, game_coords):
         """
-        Convert window-relative coordinates to screen coordinates
+        
         """
         window_left, window_top = self.window_rect[0], self.window_rect[1]
         
@@ -608,6 +569,6 @@ class ApotrisAnalyzer:
         return global_height
 
 if __name__ == "__main__":
-    # Example usage: analyzer = ApotrisAnalyzer(); analyzer.run_analysis()
+    # Example usage: analyzer = ApotrisAnalyzer(); analyzer.run_analysis_tester()
     analyzer = ApotrisAnalyzer()
-    analyzer.run_analysis()
+    analyzer.run_analysis_tester()

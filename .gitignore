@@ -6,3 +6,23 @@
 *.bmp
 *.tiff
 
+a3env/
+venv/
+.env/
+
+# ML-Agents full release — DO NOT TRACK
+ml-agents-release_23_tag/
+ml-agents-release_23_tag.zip
+
+# Python virtual env
+ml_env/
+
+# Unity generated files (recommended)
+Library/
+Temp/
+Obj/
+Logs/
+UserSettings/
+Build/
+Builds/
+MemoryCaptures/
