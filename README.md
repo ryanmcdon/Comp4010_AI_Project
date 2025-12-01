@@ -115,20 +115,22 @@ To-Dos:
 
  
 #November 30th, 2025 - Progress Report
-The past two weeks have been great for progression. After our switch from the Apotris screen-scanning to the new Unity-developed game, we had a lot of work ahead of us. On the unity front, we have developed a proper state space array, adjusted game settings and variables (7-block bag, compared to a completely random one), input handling, and migrated board space calculations from Python to Unity. On the AI front, we have made great progress. We first developed a basic framework for the reward system and action space, which allows us to modify reward calculations and easily scale our project for many different possible RL functions. From there, we meet up in person to discuss and start the implementation of RL algorithms. We developed multiple functional RL functions and were satisfied with our results. Then we began to develop our result demo! 
-
-
+The past two weeks have been great for progression. After our switch from the Apotris screen-scanning to the new Unity-developed game, we had a lot of work ahead of us. On the Unity front, we have developed a proper state space array, adjusted game settings and variables (7-block bag, compared to a completely random one), input handling, and migrated board space calculations from Python to Unity. On the AI front, we have made great progress. We first developed a basic framework for the reward system and action space, which allows us to modify reward calculations and easily scale our project for many different possible RL functions. From there, we meet up in person to discuss and start the implementation of RL algorithms. We developed multiple functional RL functions and were satisfied with our results. Then we began to develop our result demo!
+We had also realized that our November 15th implementation of our environment had a major flaw: it did not have the ability for us to properly train our AI, as it only sent current state information and it could not sample from a simulated future action. As a result, we had to restructure much of our Unity project by integrating a new package and python library: `ml-agents`
+This has been added to both our Unity repo and this python repo, as we have created new python files `RLagent.py` that use this new library.
 
 Stanny
-- developed a proper state space array in Unity
-- adjusted game settings and variables in real time, when needed
-- input handling on Unity
-- migrated board space calculations from Python to Unity
+- Developed a proper state space array in Unity
+- Adjusted game settings and variables in real time, when needed
+- Input handling on Unity
+- Migrated board space calculations from Python to Unity
 
 Aaron
 - Developed a basic framework for the reward system and action space
-- Developed the formatting and logic behind transferring  
+- Developed the formatting and logic behind transferring
+- Worked on the ε-Greedy RL algorithm
 - Implemented RL!
 
 Ryan
--Implemented RL!
+- Worked on the ε-Greedy RL algorithm
+- Implemented RL!
