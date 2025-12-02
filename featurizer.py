@@ -90,7 +90,7 @@ def featurize_board(board, piece_id=None, move_number=None, n_bins=1000):
     else:
         move_number = int(move_number)
         # Ensure move_number is in valid range [0, 5]
-        move_number = np.clip(move_number, 0, 5)
+        move_number = np.clip(move_number, 0, 8)
 
     # Get contour and compute state ID using old contour state function
     contour = board_contour_unbounded(board)  # Length 9 array
@@ -110,21 +110,142 @@ def featurize_board(board, piece_id=None, move_number=None, n_bins=1000):
     max_values = np.array([
         9**9,     # contour_state (base-9 encoding, 9 values: 0 to 9^9-1)
         10,       # piece_id (normalize assuming max 10 piece types)
-        6,        # move_number (range 0-5, so max is 5, normalize with 6)
+        9,        # move_number (range 0-5, so max is 5, normalize with 6)
     ]) + 1e-8
     
     norm_vec = np.clip(feature_vec / max_values, 0, 1)
 
-    # Hashing: quantize to bins per feature for higher resolution
-    quantized = np.clip((norm_vec * 10).astype(int), 0, 9)
-    # Create hash code using base-10 encoding
-    hash_code = 0
-    base = 1
-    for val in quantized:
-        hash_code += base * val
-        base *= 10
+    # Hashing: quantize to bins per feature with different resolutions
+    # Give more importance to piece_id and move_number by using more bins
+    contour_bins = 10      # Fewer bins for contour (reduced importance)
+    piece_id_bins = 20    # More bins for piece_id (increased importance)
+    move_number_bins = 20 # More bins for move_number (increased importance)
+    
+    quantized = np.array([
+        np.clip((norm_vec[0] * contour_bins).astype(int), 0, contour_bins - 1),
+        np.clip((norm_vec[1] * piece_id_bins).astype(int), 0, piece_id_bins - 1),
+        np.clip((norm_vec[2] * move_number_bins).astype(int), 0, move_number_bins - 1),
+    ])
+    
+    # Create hash code using mixed-base encoding to preserve importance
+    # Base sizes reflect the number of bins for each feature
+    hash_code = quantized[0] + (quantized[1] * contour_bins) + (quantized[2] * contour_bins * piece_id_bins)
     
     # Use modulo with prime multiplier for better distribution
     state_index = (hash_code * 31) % n_bins
     return state_index
 
+
+def extract_5x5_around_piece(board):
+    """
+    Extract a 5x5 area around the piece (marked as 3 on the board).
+    Finds the center of all cells with value 3 and extracts a 5x5 window.
+    Handles edge cases by padding with 0 if the window goes out of bounds.
+    
+    Args:
+        board: 20x10 numpy array representing the Tetris board
+        
+    Returns:
+        5x5 numpy array centered around the piece, or zeros if no piece found
+    """
+    board = np.array(board).reshape((20, 10))
+    rows, cols = board.shape
+    
+    # Find all positions where the piece (value 3) is located
+    piece_positions = np.where(board == 3)
+    
+    if len(piece_positions[0]) == 0:
+        # No piece found, return zeros
+        return np.zeros((5, 5), dtype=int)
+    
+    # Calculate center of the piece
+    center_row = int(np.mean(piece_positions[0]))
+    center_col = int(np.mean(piece_positions[1]))
+    
+    # Extract 5x5 area centered around the piece
+    # Calculate bounds (2 cells on each side of center)
+    row_start = center_row - 2
+    row_end = center_row + 3
+    col_start = center_col - 2
+    col_end = center_col + 3
+    
+    # Create a 5x5 array
+    area_5x5 = np.zeros((5, 5), dtype=int)
+    
+    # Copy values from board, handling out-of-bounds by padding with 0
+    # Keep the piece (value 3) so the AI can learn about position/rotation
+    for i in range(5):
+        for j in range(5):
+            board_row = row_start + i
+            board_col = col_start + j
+            
+            if 0 <= board_row < rows and 0 <= board_col < cols:
+                board_value = board[board_row, board_col]
+                # Keep the piece (value 3) to preserve position/rotation information
+                area_5x5[i, j] = board_value
+            else:
+                area_5x5[i, j] = 0  # Pad with 0 if out of bounds
+    
+    return area_5x5
+
+
+def _5x5_to_state_number(area_5x5):
+    """
+    Helper function: Convert a 5x5 area to a state number.
+    Treats each cell as binary (true/false): True (1) if cell is filled (value > 0),
+    False (0) if cell is empty (0).
+    The piece (value 3) is included in the extraction, so position/rotation information is preserved.
+    Flattens the 5x5 array (25 values) and encodes as binary number (base-2).
+    """
+    area_5x5 = np.array(area_5x5).flatten()  # Flatten to 25 values
+    base = 2
+    max_len = 25
+    
+    # Ensure we have exactly 25 values
+    if area_5x5.shape[0] > max_len:
+        area_flat = area_5x5[:max_len]
+    elif area_5x5.shape[0] < max_len:
+        area_flat = np.pad(area_5x5, (0, max_len - area_5x5.shape[0]), 'constant')
+    else:
+        area_flat = area_5x5
+    
+    # Convert to binary: True (1) if cell is filled (value > 0), False (0) if empty
+    binary = (area_flat > 0).astype(int)
+    
+    # Convert to state number (base-2 number)
+    state_number = 0
+    for i, val in enumerate(binary):
+        state_number += int(val) * (base ** i)
+    
+    return state_number
+
+
+def featurize_board_5x5(board, piece_id=0, move_number=0, n_bins=100):
+    """
+    Featurize a 20x10 Tetris board by extracting a 5x5 area around the piece.
+    Returns a state index in range [0, n_bins-1].
+    
+    Args:
+        board: 20x10 numpy array representing the Tetris board
+        n_bins: Number of bins for state space discretization (default: 100)
+        
+    Returns:
+        state_index: Integer state index in range [0, n_bins-1]
+    """
+    pieces = 7
+    board = np.array(board).reshape((20, 10))
+    
+    # Extract 5x5 area around piece (including the piece itself for position/rotation learning)
+    area_5x5 = extract_5x5_around_piece(board)
+    
+    # Convert 5x5 area to state number using binary encoding
+    area_state = _5x5_to_state_number(area_5x5)  # Range: 0 to 2^25-1
+    
+    if (n_bins % pieces != 0):
+        print("n_bins must be divisible by pieces")
+        return None
+    else:      
+        # Hash to n_bins using modulo with prime multiplier for better distribution
+        state_index = (area_state * 31) % (n_bins // pieces)
+        state_index = int(state_index * pieces + piece_id)
+        return state_index
