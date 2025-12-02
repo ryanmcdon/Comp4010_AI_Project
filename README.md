@@ -86,7 +86,8 @@ We need to find a long-term solution to quell these environment issues and have 
 
 The past 2 weeks have been extremely daunting for us, as we ran into an issue with using a screen scanner for Apostris as our environment. We had issues where some blocks wouldn't be picked up from scans, as well as the extremely-poor runtime of constantly parsing data from pixel-perfect screen scanning. The most glaring issue however was the fact that there was a built-in anti-cheat of Apotris that prevents players from making macro inputs every frame, meaning we could not have our AI interact with the game at peak efficiency. Therefore, we ultimately the hard decision to completely pivot off of Apostris for our environment, and swap entirely to a new system revolving around our own Tetris game, built from the ground up using Unity 2020.3.49f1. <br> <br>
 This makes the previous python file of ApostrisAnalyzer deprecated. However, our AI is still being programmed in Python; our new method is to create a Socket-Signal server with the host being the new "StateServer.py" python file and the client being the Unity Tetris recreation. The Tetris client connects to the python file and sends JSON data of the state-space for our AI to use.
-Link to house-made Tetris repo: https://github.com/littlemanstann/COMP4010-UnityTetrisRecreation 
+
+**Link to house-made Tetris repo: https://github.com/littlemanstann/COMP4010-UnityTetrisRecreation**
 
 **Stanny**
 - Created a recreation of Tetris using Unity, replicating the Apostris Dig gamemode
