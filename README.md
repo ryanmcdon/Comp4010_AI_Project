@@ -119,6 +119,8 @@ The past two weeks have been great for progression. After our switch from the Ap
 We had also realized that our November 15th implementation of our environment had a major flaw: it did not have the ability for us to properly train our AI, as it only sent current state information and it could not sample from a simulated future action. As a result, we had to restructure much of our Unity project by integrating a new package and python library: `ml-agents`
 This has been added to both our Unity repo and this python repo, as we have created new python files `RLagent.py` that use this new library.
 
+### Link to our Results Demo: https://youtu.be/BtPQ1lrCzm4
+
 **Stanny**
 - Developed a proper state space array in Unity
 - Adjusted game settings and variables in real time, when needed
