@@ -86,7 +86,8 @@ We need to find a long-term solution to quell these environment issues and have 
 
 The past 2 weeks have been extremely daunting for us, as we ran into an issue with using a screen scanner for Apostris as our environment. We had issues where some blocks wouldn't be picked up from scans, as well as the extremely-poor runtime of constantly parsing data from pixel-perfect screen scanning. The most glaring issue however was the fact that there was a built-in anti-cheat of Apotris that prevents players from making macro inputs every frame, meaning we could not have our AI interact with the game at peak efficiency. Therefore, we ultimately the hard decision to completely pivot off of Apostris for our environment, and swap entirely to a new system revolving around our own Tetris game, built from the ground up using Unity 2020.3.49f1. <br> <br>
 This makes the previous python file of ApostrisAnalyzer deprecated. However, our AI is still being programmed in Python; our new method is to create a Socket-Signal server with the host being the new "StateServer.py" python file and the client being the Unity Tetris recreation. The Tetris client connects to the python file and sends JSON data of the state-space for our AI to use.
-Link to house-made Tetris repo: https://github.com/littlemanstann/COMP4010-UnityTetrisRecreation 
+
+**Link to house-made Tetris repo: https://github.com/littlemanstann/COMP4010-UnityTetrisRecreation**
 
 **Stanny**
 - Created a recreation of Tetris using Unity, replicating the Apostris Dig gamemode
@@ -118,6 +119,8 @@ Link to house-made Tetris repo: https://github.com/littlemanstann/COMP4010-Unity
 The past two weeks have been great for progression. After our switch from the Apotris screen-scanning to the new Unity-developed game, we had a lot of work ahead of us. On the Unity front, we have developed a proper state space array, adjusted game settings and variables (7-block bag, compared to a completely random one), input handling, and migrated board space calculations from Python to Unity. On the AI front, we have made great progress. We first developed a basic framework for the reward system and action space, which allows us to modify reward calculations and easily scale our project for many different possible RL functions. From there, we meet up in person to discuss and start the implementation of RL algorithms. We developed multiple functional RL functions and were satisfied with our results. Then we began to develop our result demo!
 We had also realized that our November 15th implementation of our environment had a major flaw: it did not have the ability for us to properly train our AI, as it only sent current state information and it could not sample from a simulated future action. As a result, we had to restructure much of our Unity project by integrating a new package and python library: `ml-agents`
 This has been added to both our Unity repo and this python repo, as we have created new python files `RLagent.py` that use this new library.
+
+### Link to our Results Demo: https://youtu.be/BtPQ1lrCzm4
 
 **Stanny**
 - Developed a proper state space array in Unity
