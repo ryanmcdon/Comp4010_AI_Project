@@ -109,7 +109,7 @@ def featurize_board(board, piece_id=None, move_number=None, n_bins=1000):
     # Move number: range 0-5 (6 possible values)
     max_values = np.array([
         9**9,     # contour_state (base-9 encoding, 9 values: 0 to 9^9-1)
-        10,       # piece_id (normalize assuming max 10 piece types)
+        7,       # piece_id (normalize assuming max 10 piece types)
         9,        # move_number (range 0-5, so max is 5, normalize with 6)
     ]) + 1e-8
     

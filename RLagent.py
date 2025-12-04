@@ -499,7 +499,7 @@ n_actions = spec.action_spec.discrete_branches[0]
 # To save after training: policy_matrix = epsilonGreedyAgent(env, possible_actions, behavior_name, save_to_file='policy_matrix.npy')
 # To both load and save: policy_matrix = epsilonGreedyAgent(env, possible_actions, behavior_name, load_from_file='policy_matrix.npy', save_to_file='policy_matrix.npy')
 
-policy_matrix = epsilonGreedyAgent(env, possible_actions, behavior_name, move_before_drop=40, save_to_file='policy_matrix.npy', featurizer=featurize_board_5x5,n_bins=1400) # Call the epsilonGreedyAgent function and save the matrix
+policy_matrix = epsilonGreedyAgent(env, possible_actions, behavior_name, move_before_drop=40, load_from_file='policy_matrix.npy', featurizer=featurize_board_5x5,n_bins=1400) # Call the epsilonGreedyAgent function and save the matrix
 print("Policy matrix: test run")
 run_policy_matrix(env, policy_matrix, possible_actions, behavior_name, featurizer=featurize_board_5x5, n_bins=1400) # Call the run_policy_matrix function with matching featurizer and n_bins
 #randomAgent(env,possible_actions,behavior_name) # Call the randomAgent function
