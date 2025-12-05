@@ -1,65 +1,36 @@
-#!/usr/bin/env python3
-"""
-Main Program for Comp4010 AI Project
-====================================
+from mlagents_envs.environment import UnityEnvironment
+from RLagent import epsilonGreedyAgent, run_policy_matrix, possible_actions
+from featurizer import featurize_board_4x4, featurize_board_4x4_no_center
 
-This is the main entry point for the screen analysis and capture tools.
-It provides a unified interface to access all the different tools and functionalities.
+# -------------------------------------------------
+# CONNECT TO UNITY
+# -------------------------------------------------
+env = UnityEnvironment(file_name=None)  # Connects to Editor Play mode
+env.reset()
 
-Course: Comp4010 AI Project
-"""
+# Get the single behavior
+behavior_name = list(env.behavior_specs.keys())[0]
+spec = env.behavior_specs[behavior_name]
 
-import sys
-import os
-import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
-import threading
-import subprocess
-import webbrowser
-from pathlib import Path
-from PyQt5 import QtWidgets
+print("Connected to:", behavior_name)
+print("Observation Specs:", spec.observation_specs)
+print("Action Spec:", spec.action_spec)
+print("-" * 60)
+print("Possible actions:", behavior_name)
+# Number of discrete actions (should be 6 for TetrisAgent)
+n_actions = spec.action_spec.discrete_branches[0]
 
-# Add current directory to path for imports
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Example usage with save/load functionality:
+# To load an existing policy matrix: policy_matrix = epsilonGreedyAgent(env, possible_actions, behavior_name, load_from_file='policy_matrix.npy')
+# To save after training: policy_matrix = epsilonGreedyAgent(env, possible_actions, behavior_name, save_to_file='policy_matrix.npy')
+# To both load and save: policy_matrix = epsilonGreedyAgent(env, possible_actions, behavior_name, load_from_file='policy_matrix.npy', save_to_file='policy_matrix.npy')
 
-try:
-    from ScreenCapture import *
-    from ScreenInfoDisplay import *
-    from ScreenOverlay import ScreenOverlay
-    from ApotrisAnalyzer import ApotrisAnalyzer
-except ImportError as e:
-    print(f"Import error: {e}")
-    print("Please ensure all required dependencies are installed:")
-    print("pip install -r requirements.txt")
-
-class MainApplication:
-
-    def run(self):
-        app = QtWidgets.QApplication(sys.argv)
-        
-        self.ScreenOverlay = ScreenOverlay()
-        self.ScreenOverlay.show()
-
-        self.apotris_analyzer = ApotrisAnalyzer()
-        info = self.apotris_analyzer.run_analysis_tester()
-        print(info['game_coordinates'])
-        print(info['white_board'])
-        print(info['contour'])
-        print(info['board'])
-
-        # Assign the extracted information to the overlay for display
-        # self.ScreenOverlay.update_window_location(info['game_coordinates']['top_left'][0], info['game_coordinates']['top_left'][1])
-        self.ScreenOverlay.update_window_location(1000, 800)  # Example fixed position
-        print(info['game_coordinates']['top_left'][0], info['game_coordinates']['top_left'][1])
-
-        self.ScreenOverlay.setDots(info['board'])
+policy_matrix = epsilonGreedyAgent(env, possible_actions, behavior_name, epsilon=0.01, move_before_drop=40, save_to_file='policy_matrix_4x4.npy', featurizer=featurize_board_4x4_no_center,n_bins=24000) # Call the epsilonGreedyAgent function and save the matrix
+print("Policy matrix: test run")
+run_policy_matrix(env, policy_matrix, possible_actions, behavior_name, featurizer=featurize_board_4x4, n_bins=10000) # Call the run_policy_matrix function with matching featurizer and n_bins
+#randomAgent(env,possible_actions,behavior_name) # Call the randomAgent function
 
 
-        sys.exit(app.exec_())
+# Close Unity
+env.close()
 
-        
-        
-if __name__ == "__main__":
-    # Example usage: analyzer = ApotrisAnalyzer(); analyzer.run_analysis()
-    main = MainApplication()
-    main.run()

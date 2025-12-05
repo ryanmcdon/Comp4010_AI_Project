@@ -3,7 +3,7 @@ from mlagents_envs.base_env import ActionTuple
 import numpy as np
 import time
 import os
-from featurizer import featurize_board, featurize_board_5x5
+from featurizer import featurize_board, featurize_board_5x5, featurize_board_4x4
 
 #TODO create a policy matrix randomly that is updated with the reward from randomAgent
 
@@ -56,8 +56,8 @@ def randomAgent(env, possible_actions, behavior_name, gama = 0.99, epsilon = 0.1
                 # print("Board:", board)
                 print("Current Piece ID:", current_piece_id)
                 # Use new featurizer instead of old contouring functions
-                state_idx = featurize_board(board, piece_id=current_piece_id, n_bins=n_bins)
-                print("State index:", state_idx)
+                state_idx, has_piece = featurize_board(board, piece_id=current_piece_id, n_bins=n_bins)
+                print("State index:", state_idx, "Has piece:", has_piece)
                 print("-" * 40)
 
                 
@@ -146,7 +146,7 @@ def load_policy_matrix(filepath, n_bins=None, n_actions=None):
 
 
 # An epsilon-greedy agent that uses the policy matrix to select actions
-def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon=0.1, move_before_drop=8, max_episodes=400, n_bins=1000, load_from_file=None, save_to_file=None, featurizer=featurize_board):
+def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon=0.01, move_before_drop=40, max_episodes=400, n_bins=1000, load_from_file=None, save_to_file=None, featurizer=featurize_board):
     """
     Epsilon-greedy agent that selects actions based on the policy matrix.
     With probability epsilon, selects a random action (exploration).
@@ -194,7 +194,7 @@ def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon
     # -------------------------------------------------
     for episode in range(max_episodes):
         print(f"\n========= EPISODE {episode} START =========")
-        print("Policy matrix:", policy_matrix)
+        #print("Policy matrix:", policy_matrix)
         env.reset()
         terminated = False
         # List to store state-action pairs until a reward is returned
@@ -204,18 +204,53 @@ def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon
         moves_in_episode = 0  # Track number of moves in current episode
         
         while not terminated:
-
+            # -------------------------------------------------
+            # Step environment
+            # -------------------------------------------------
+            env.step()
             # Get decision + terminal steps from Unity
             decision_steps, terminal_steps = env.get_steps(behavior_name)
+            obs_after = decision_steps.obs[0]
+            board, current_piece_id, reward1, reward2 = parse_observation(obs_after)
+            # -------------------------------------------------
+            # Check reward and update previous actions if reward is returned
+            # -------------------------------------------------
+            
+            # Get the reward after the step
+            reward = 0
+            if len(terminal_steps) > 0:
+                # Use the true reward at the end of the episode
+                reward = terminal_steps.reward[0] if hasattr(terminal_steps.reward, "__getitem__") else terminal_steps.reward
+                reward = reward1
+                # Mark episode as terminated
+                terminated = True
+                print(f"[DONE] Episode ended with reward: {reward}")
+            elif len(decision_steps) > 0:
+                # Get reward from observation after step
+                
+                reward = reward1
+            else:
+                reward = 0
+            
+            # If we got a non-zero reward, update all previous state-action pairs
+            if reward != 0 and len(state_action_history) > 0 and len(decision_steps) > 0:
+                #print("Placement reward:", reward)
+                #print(f"Reward returned: {reward}. Updating {len(state_action_history)} previous state-action pairs.")
+                alpha = 0.01
+                # Update all previous state-action pairs with this reward
+                if len(state_action_history) > 0:
+                    indices = np.array(state_action_history)
+                    policy_matrix[indices[:, 0], indices[:, 1]] += alpha * (reward - policy_matrix[indices[:, 0], indices[:, 1]])
+                # Clear the history after updating
+                state_action_history = []
+                
             
             # -------------------------------------------------
-            # If agent needs an action
+            # If take an action
             # -------------------------------------------------
             if len(decision_steps) > 0:
-                obs = decision_steps.obs[0]  # Get observation tensor
-                agent_ids = decision_steps.agent_id  # usually 1 agent
+                # agent_ids = decision_steps.agent_id  # usually 1 agent
  
-                board, current_piece_id, reward1, reward2 = parse_observation(obs)
                 # print("reward:", reward1)
                 if currentpiece == -1:
                     currentpiece = current_piece_id
@@ -232,9 +267,11 @@ def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon
                 #print("Board:", board)
                 #print("Current Piece ID:", current_piece_id)
                 # Use featurizer to convert board state to state index
-                state_idx = featurizer(board, piece_id=current_piece_id, move_number=move_number, n_bins=n_bins)
+                state_idx, flipped_state_idx = featurizer(board, piece_id=current_piece_id, move_number=move_number, n_bins=n_bins)
+                #print("State index:", state_idx, "Flipped state index:", flipped_state_idx)
                 # Ensure state_idx is an integer and within bounds
-                state_idx = int(state_idx) % n_bins
+                if (state_idx > n_bins):
+                    state_idx = state_idx % n_bins
                 
                 # print("-" * 40)
                 # print("State index:", state_idx)
@@ -244,13 +281,6 @@ def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon
                 if moves_in_episode >= move_before_drop:
                     # Force fast drop action    
                     action_val = ACTION_FAST_DROP
-                    # Find the index for state-action history (use ACTION_DROP index if ACTION_FAST_DROP not in possible_actions)
-                    if ACTION_FAST_DROP in possible_actions:
-                        action_idx = possible_actions.index(ACTION_FAST_DROP)
-                    else:
-                        # Use ACTION_DROP index as fallback for policy matrix update
-                        action_idx = possible_actions.index(ACTION_DROP)
-                    # print(f"Forcing fast drop action (value {ACTION_FAST_DROP}) after {moves_in_episode} moves")
                     moves_in_episode = 0  # Reset counter after drop
                 else:
                     # Epsilon-greedy action selection
@@ -261,13 +291,23 @@ def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon
                     else:
                         # Exploitation: select the action with the highest value in the policy matrix
                         action_values = policy_matrix[state_idx, :]
-                        action_idx = np.argmax(action_values) # +1 because the action_values are 0-indexed but the possible_actions are 1-indexed
+                        action_idx = np.argmax(action_values) # 
                         # print(f"Exploiting: selected best action {action_idx} with value {action_values[action_idx]:.4f}")
                     
+                    #would not be necissary if the indexes maped to spot in matrix but 0 is not a response
                     action_val = possible_actions[action_idx]
                     moves_in_episode += 1  # Increment move counter
+                    
+                    # If flipped_state_idx is True and action is left/right, reverse the action
+                    # but keep the original action_idx for policy matrix updates
+                    if flipped_state_idx and (action_val == ACTION_MOVE_LEFT or action_val == ACTION_MOVE_RIGHT):
+                        # Reverse the action: left -> right, right -> left
+                        if action_val == ACTION_MOVE_LEFT:
+                            action_val = ACTION_MOVE_RIGHT
+                        elif action_val == ACTION_MOVE_RIGHT:
+                            action_val = ACTION_MOVE_LEFT
                 
-                # Store the state-action pair before taking the action
+                # Store the state-action pair before taking the action (using original action_idx)
                 state_action_history.append((state_idx, action_idx))
                 
                 action_tuple = ActionTuple(
@@ -275,43 +315,7 @@ def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon
                 )
                 env.set_actions(behavior_name, action_tuple)
 
-            # -------------------------------------------------
-            # Step environment
-            # -------------------------------------------------
-            env.step()
 
-            # -------------------------------------------------
-            # Check reward and update previous actions if reward is returned
-            # -------------------------------------------------
-            decision_steps_after, terminal_steps_after = env.get_steps(behavior_name)
-            
-            # Get the reward after the step
-            reward = 0
-            if len(terminal_steps_after) > 0:
-                # Use the true reward at the end of the episode
-                reward = terminal_steps_after.reward[0] if hasattr(terminal_steps_after.reward, "__getitem__") else terminal_steps_after.reward
-                reward = -0.1
-                # Mark episode as terminated
-                terminated = True
-                print(f"[DONE] Episode ended with reward: {reward}")
-            elif len(decision_steps_after) > 0:
-                # Get reward from observation after step
-                obs_after = decision_steps_after.obs[0]
-                board_after, current_piece_id_after, reward1_after, reward2_after = parse_observation(obs_after)
-                reward = reward1_after
-            else:
-                reward = 0
-                print("hello")
-            
-            # If we got a non-zero reward, update all previous state-action pairs
-            if reward != 0 and len(state_action_history) > 0 and len(decision_steps) > 0:
-                print(f"Reward returned: {reward}. Updating {len(state_action_history)} previous state-action pairs.")
-                alpha = 0.1
-                # Update all previous state-action pairs with this reward
-                for state_idx_hist, action_idx_hist in state_action_history:
-                    policy_matrix[state_idx_hist, action_idx_hist] = policy_matrix[state_idx_hist, action_idx_hist] + alpha * (reward - policy_matrix[state_idx_hist, action_idx_hist])
-                # Clear the history after updating
-                state_action_history = []
             
     
     # Save the policy matrix if save_to_file is provided (final save)
@@ -379,7 +383,7 @@ def run_policy_matrix(env, policy_matrix, possible_actions, behavior_name, n_epi
                         move_number = -1    #Error
                 
                 # Featurize the board to get the state index
-                state_idx = featurizer(board, piece_id=current_piece_id, move_number=move_number, n_bins=n_bins)
+                state_idx, has_piece = featurizer(board, piece_id=current_piece_id, move_number=move_number, n_bins=n_bins)
                 
                 # Get greedy action from policy matrix (pure exploitation, no exploration)
                 action_values = policy_matrix[state_idx, :]
@@ -459,6 +463,8 @@ def parse_observation(obs):
     Returns:
       board (np.ndarray shape 20x10), current_piece_id (float/int), reward1, reward2 (floats)
     """
+    if obs.size == 0:
+        return None, None, None, None
     flat_obs = obs.flatten()
     board = flat_obs[:200].reshape((20, 10))
     # Remaining values: assume the order is [piece_id, reward1, reward2]
@@ -476,39 +482,6 @@ def parse_observation(obs):
 
 
 
-# -------------------------------------------------
-# CONNECT TO UNITY
-# -------------------------------------------------
-env = UnityEnvironment(file_name=None)  # Connects to Editor Play mode
-env.reset()
-
-# Get the single behavior
-behavior_name = list(env.behavior_specs.keys())[0]
-spec = env.behavior_specs[behavior_name]
-
-print("Connected to:", behavior_name)
-print("Observation Specs:", spec.observation_specs)
-print("Action Spec:", spec.action_spec)
-print("-" * 60)
-print("Possible actions:", behavior_name)
-# Number of discrete actions (should be 6 for TetrisAgent)
-n_actions = spec.action_spec.discrete_branches[0]
-
-# Example usage with save/load functionality:
-# To load an existing policy matrix: policy_matrix = epsilonGreedyAgent(env, possible_actions, behavior_name, load_from_file='policy_matrix.npy')
-# To save after training: policy_matrix = epsilonGreedyAgent(env, possible_actions, behavior_name, save_to_file='policy_matrix.npy')
-# To both load and save: policy_matrix = epsilonGreedyAgent(env, possible_actions, behavior_name, load_from_file='policy_matrix.npy', save_to_file='policy_matrix.npy')
-
-policy_matrix = epsilonGreedyAgent(env, possible_actions, behavior_name, move_before_drop=40, load_from_file='policy_matrix.npy', featurizer=featurize_board_5x5,n_bins=1400) # Call the epsilonGreedyAgent function and save the matrix
-print("Policy matrix: test run")
-run_policy_matrix(env, policy_matrix, possible_actions, behavior_name, featurizer=featurize_board_5x5, n_bins=1400) # Call the run_policy_matrix function with matching featurizer and n_bins
-#randomAgent(env,possible_actions,behavior_name) # Call the randomAgent function
-
-
-# Close Unity
-env.close()
-
-
 
 # TODO: create a simple function that steps through the environment recives the returns from environment and prints them out
 def stepThroughEnvironment(env,possible_actions):
@@ -517,7 +490,7 @@ def stepThroughEnvironment(env,possible_actions):
         if len(decision_steps) > 0:
             obs = decision_steps.obs[0]
             agent_ids = decision_steps.agent_id
-            action_val = np.random.randint(0, n_actions)
+            action_val = np.random.randint(0, len(possible_actions))
             action_tuple = ActionTuple(
                 discrete=np.array([[action_val]])
             )
