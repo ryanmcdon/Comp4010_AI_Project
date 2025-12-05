@@ -5,6 +5,12 @@ import numpy as np
 _MASK_4X4_NO_CENTER = np.ones((4, 4), dtype=bool)
 _MASK_4X4_NO_CENTER[0:2, 1:3] = False  # Remove top-middle 2x2
 
+# Pre-computed power arrays for vectorized base conversion (for performance)
+_POWERS_BASE_9 = 9 ** np.arange(9, dtype=np.int64)  # For base-9 contour encoding
+_POWERS_BASE_2_25 = np.uint64(2) ** np.arange(25, dtype=np.uint64)  # For 5x5 binary encoding
+_POWERS_BASE_2_16 = 1 << np.arange(15, -1, -1, dtype=np.int64)  # For 4x4 binary encoding (MSB first)
+_POWERS_BASE_2_12 = 1 << np.arange(11, -1, -1, dtype=np.int64)  # For 12-bit encoding (MSB first)
+
 #This file features different featurizer methods along with functions to get the data that will be featurized
 # We will use these to reduce state space
 
@@ -16,29 +22,28 @@ def board_contour_unbounded(board):
     Returns a length-9 array of differences between adjacent columns.
     Uses the bottommost filled cell (max row index) for each column, like the original.
     Both 0's and 3's are considered blank spaces - only values > 0 and != 3 are considered filled.
+    
+    Vectorized implementation for better performance.
     """
-    board = np.array(board)
+    board = np.asarray(board)
     rows, cols = board.shape
-    contour = np.zeros(cols - 1, dtype=int)
-    prev_height = None
     
-    for col in range(cols):
-        column = board[:, col]
-        # Consider both 0's and 3's as blank spaces - only count filled cells that are > 0 and != 3
-        filled = np.where((column > 0) & (column != 3))[0]
-        # print("Column:", column)
-        # print("Filled:", filled)
-        # Use max (bottommost) filled cell, or rows if column is empty
-        current_height = filled.max() if len(filled) > 0 else rows
-        
-        if col > 0:
-            if prev_height is not None:
-                # Calculate difference: positive means current column is lower (higher row index)
-                # This matches the original logic: prev - current
-                diff = prev_height - current_height
-                contour[col - 1] = diff
-        prev_height = current_height
+    # Create mask for filled cells (not 0 and not 3)
+    filled_mask = (board > 0) & (board != 3)
     
+    # Get column heights: for each column, find the max row index with filled cell
+    # If no filled cells, use `rows` as the height
+    col_indices = np.arange(rows).reshape(-1, 1)  # Shape (rows, 1)
+    
+    # For each column, get max row index where filled, or `rows` if empty
+    heights = np.where(
+        filled_mask.any(axis=0),
+        np.where(filled_mask, col_indices, -1).max(axis=0),
+        rows
+    )
+    
+    # Calculate differences between adjacent columns
+    contour = heights[:-1] - heights[1:]
     return contour
 
 
@@ -46,12 +51,13 @@ def _contour_to_state_number(contour):
     """
     Helper function: Convert a contour array to a state number without canonicalization.
     Uses base-9 encoding with clipping to [-4, +4].
+    
+    Vectorized implementation using pre-computed powers for better performance.
     """
-    base = 9
     max_len = 9
 
     # Truncate or pad contour to length 9
-    contour = np.array(contour)
+    contour = np.asarray(contour)
     if contour.shape[0] > max_len:
         contour_short = contour[:max_len]
     elif contour.shape[0] < max_len:
@@ -64,13 +70,10 @@ def _contour_to_state_number(contour):
     # Clip unbounded values to the range [-4, +4]
     mapped = np.clip(contour_short, -4, 4) + 4  # range now [0, 8]
 
+    # Vectorized conversion using pre-computed powers (dot product instead of loop)
+    state_number = np.dot(mapped, _POWERS_BASE_9)
 
-    # Convert to state number (base-9 number)
-    state_number = 0
-    for i, val in enumerate(mapped):
-        state_number += int(val) * (base ** i)
-
-    return state_number
+    return int(state_number)
 
 
 def featurize_board(board, piece_id=None, move_number=None, n_bins=1000):
@@ -89,7 +92,7 @@ def featurize_board(board, piece_id=None, move_number=None, n_bins=1000):
             state_index: Integer state index in range [0, n_bins-1]
             has_piece: Boolean indicating if a piece (value 3) was found on the board
     """
-    board = np.array(board).reshape((20, 10))
+    board = np.asarray(board).reshape((20, 10))
     
     # Normalize piece_id (handle None case and ensure it's an integer)
     if piece_id is None:
@@ -165,7 +168,7 @@ def extract_5x5_around_piece(board):
     Returns:
         5x5 numpy array centered around the piece, or zeros if no piece found
     """
-    board = np.array(board).reshape((20, 10))
+    board = np.asarray(board).reshape((20, 10))
     rows, cols = board.shape
     
     # Find all positions where the piece (value 3) is located
@@ -209,6 +212,79 @@ def extract_5x5_around_piece(board):
     return area_5x5
 
 
+def _column_heights_and_holes(board):
+    """
+    Compute column heights and hole counts for a 20x10 board.
+    Treats any non-zero cell (including active piece marked as 3) as filled.
+    Returns:
+        heights (np.ndarray shape (10,)): height of each column measured from bottom (0-20)
+        holes (int): total number of empty cells that have at least one filled cell above them
+    """
+    board = np.asarray(board).reshape((20, 10))
+    rows, cols = board.shape
+    heights = np.zeros(cols, dtype=int)
+    holes = 0
+    for c in range(cols):
+        col = board[:, c]
+        filled_indices = np.where(col != 0)[0]
+        if filled_indices.size == 0:
+            heights[c] = 0
+            continue
+        top_index = filled_indices[0]  # smallest row index with a filled cell (topmost filled)
+        heights[c] = rows - top_index
+        # Holes are empty cells below the topmost filled cell
+        below = col[top_index:]
+        holes += int(np.sum(below == 0))
+    return heights, holes
+
+
+def featurize_tabular_state(board, piece_id=0, locked_flag=0, extra_value=0):
+    """
+    Compact tabular featurizer for a 20x10 Tetris board.
+    Returns a discrete state key (tuple) suitable for dictionary-based Q-tables.
+
+    Args:
+        board: 20x10 array where 1/2 are placed blocks and 3 is active piece.
+        piece_id: integer identifier of the current tetromino.
+        locked_flag: integer flag indicating if a piece was locked on the last step.
+        extra_value: an additional integer from the environment (e.g., lines cleared).
+
+    Features (all discretized coarsely to keep table size small):
+        - max_height_bin: bucketed max column height
+        - total_height_bin: bucketed sum of column heights
+        - holes_bin: bucketed total holes
+        - bumpiness_bin: bucketed sum of |height_i - height_{i+1}|
+        - piece_id (int)
+        - locked_flag (0/1)
+        - extra_value (clamped small int)
+    """
+    board = np.asarray(board).reshape((20, 10))
+    heights, holes = _column_heights_and_holes(board)
+    max_height = int(np.max(heights))
+    total_height = int(np.sum(heights))
+    bumpiness = int(np.sum(np.abs(np.diff(heights))))
+
+    # Bin edges tuned to keep the table compact while retaining structure
+    max_height_bin = int(np.digitize(max_height, [4, 8, 12, 16, 20]))
+    total_height_bin = int(np.digitize(total_height, [10, 20, 40, 60, 80, 120]))
+    holes_bin = int(np.digitize(holes, [0, 2, 5, 10, 20, 40]))
+    bumpiness_bin = int(np.digitize(bumpiness, [0, 3, 6, 10, 15, 25]))
+
+    locked_flag = int(bool(locked_flag))
+    piece_id = int(piece_id) if piece_id is not None else 0
+    extra_value = int(np.clip(extra_value if extra_value is not None else 0, -2, 10))
+
+    # Tuple key keeps Q-table dictionary small and hashable
+    return (
+        max_height_bin,
+        total_height_bin,
+        holes_bin,
+        bumpiness_bin,
+        piece_id,
+        locked_flag,
+        extra_value,
+    )
+
 def _5x5_to_state_number(area_5x5):
     """
     Helper function: Convert a 5x5 area to a state number.
@@ -216,9 +292,10 @@ def _5x5_to_state_number(area_5x5):
     False (0) if cell is empty (0).
     The piece (value 3) is included in the extraction, so position/rotation information is preserved.
     Flattens the 5x5 array (25 values) and encodes as binary number (base-2).
+    
+    Vectorized implementation using pre-computed powers for better performance.
     """
-    area_5x5 = np.array(area_5x5).flatten()  # Flatten to 25 values
-    base = 2
+    area_5x5 = np.asarray(area_5x5).flatten()  # Flatten to 25 values
     max_len = 25
     
     # Ensure we have exactly 25 values
@@ -230,14 +307,12 @@ def _5x5_to_state_number(area_5x5):
         area_flat = area_5x5
     
     # Convert to binary: True (1) if cell is filled (value > 0), False (0) if empty
-    binary = (area_flat > 0).astype(int)
+    binary = (area_flat > 0).astype(np.uint64)
     
-    # Convert to state number (base-2 number)
-    state_number = 0
-    for i, val in enumerate(binary):
-        state_number += int(val) * (base ** i)
+    # Vectorized conversion using pre-computed powers (dot product instead of loop)
+    state_number = np.dot(binary, _POWERS_BASE_2_25)
     
-    return state_number
+    return int(state_number)
 
 
 def featurize_board_5x5(board, piece_id=0, move_number=0, n_bins=100):
@@ -257,7 +332,7 @@ def featurize_board_5x5(board, piece_id=0, move_number=0, n_bins=100):
             has_piece: Boolean indicating if a piece (value 3) was found on the board
     """
     pieces = 7
-    board = np.array(board).reshape((20, 10))
+    board = np.asarray(board).reshape((20, 10))
     
     # Extract 5x5 area around piece (including the piece itself for position/rotation learning)
     area_5x5 = extract_5x5_around_piece(board)
@@ -288,7 +363,7 @@ def extract_4x4_around_piece(board):
     If multiple '3's are present, returns the region around the first found.
     If no '3's, returns a 4x4 grid at (0,0).
     """
-    board = np.flipud(np.array(board).reshape((20, 10)))
+    board = np.flipud(np.asarray(board).reshape((20, 10)))
     piece_indices = np.argwhere(board == 3)
     if piece_indices.shape[0] == 0:
         # No active piece found; return top-left 4x4 as fallback
@@ -313,7 +388,7 @@ def print_array(arr):
     Utility test function to print a numpy array (typically a board) to the console
     with a readable format.
     """
-    arr = np.array(arr)
+    arr = np.asarray(arr)
     for row in arr:
         print(' '.join(str(x) for x in row), flush=True)
     print()  # Add blank line after array for readability
@@ -340,43 +415,40 @@ def featurize_board_4x4(board, piece_id=0, move_number=0, n_bins=100):
     Returns a tuple (state_index, has_piece) where:
         state_index: Integer state index in range [0, n_bins-1]
         has_piece: Boolean indicating if a piece (value 3) was found on the board
+    
+    Vectorized binary conversion for better performance.
     """
-    board_array = np.array(board).reshape((20, 10))
+    board_array = np.asarray(board).reshape((20, 10))
     # Check if piece (value 3) exists on the board before extraction
     has_piece = np.any(board_array == 3)
     
     area_4x4 = extract_4x4_around_piece(board)
     # Convert the 4x4 area to a unique number using only zero/nonzero (binary)
-    area_binary = (area_4x4 > 0).astype(int)
+    area_binary = (area_4x4 > 0).astype(np.int64)
     flat_binary = area_binary.flatten()
-    # Interpret as a binary number
-    unique_number = 0
-    for bit in flat_binary:
-        unique_number = (unique_number << 1) | bit
-    area_4x4 = unique_number
-    #print("area_4x4:", area_4x4, "binary:", format(area_4x4, '016b'))
+    
+    # Vectorized binary to int conversion using pre-computed powers (MSB first)
+    unique_number = np.dot(flat_binary, _POWERS_BASE_2_16)
     
     # Flip the 4x4 area horizontally (left-right)
     flipped_area_4x4 = np.fliplr(area_binary)
     flat_flipped = flipped_area_4x4.flatten()
-    # Interpret flipped area as a binary number
-    flipped_number = 0
-    for bit in flat_flipped:
-        flipped_number = (flipped_number << 1) | bit
-    #print("flipped_area_4x4:", flipped_number, "binary:", format(flipped_number, '016b'))
+    
+    # Vectorized binary to int for flipped
+    flipped_number = np.dot(flat_flipped, _POWERS_BASE_2_16)
+    
     # Take the lower of the two numbers (original, flipped)
-    if (area_4x4 <= flipped_number):
-         has_piece = False
+    if unique_number <= flipped_number:
+        area_4x4_val = unique_number
+        has_piece = False
     else:
-        area_4x4 = flipped_number
+        area_4x4_val = flipped_number
         has_piece = True
     
-    if (area_4x4 > n_bins):
-        area_4x4 = area_4x4 % n_bins
-    else:
-        area_4x4 = area_4x4
+    if area_4x4_val > n_bins:
+        area_4x4_val = area_4x4_val % n_bins
     
-    return area_4x4, has_piece
+    return int(area_4x4_val), has_piece
 
 
 # Piece ID mapping for state space reduction (pieces 4 and 6 share states with 3 and 5)
@@ -397,8 +469,10 @@ def featurize_board_4x4_no_center(board, piece_id=0, move_number=0, n_bins=100):
         piece_id: Current active piece ID (default: 0)
         move_number: Move number (default: 0)
         n_bins: Number of bins for state space discretization (default: 100)
+    
+    Vectorized binary conversion for better performance.
     """
-    board_array = np.array(board).reshape((20, 10))
+    board_array = np.asarray(board).reshape((20, 10))
     # Check if piece (value 3) exists on the board before extraction
     has_piece = np.any(board_array == 3)
     
@@ -413,25 +487,21 @@ def featurize_board_4x4_no_center(board, piece_id=0, move_number=0, n_bins=100):
     outer_squares = area_4x4[mask]  # This gives us 12 values
     
     # Convert to binary: True (1) if cell is filled (value > 0), False (0) if empty
-    area_binary = (outer_squares > 0).astype(int)
+    area_binary = (outer_squares > 0).astype(np.int64)
     
-    # Convert the 12 bits to a binary number
-    unique_number = 0
-    for bit in area_binary:
-        unique_number = (unique_number << 1) | bit
+    # Vectorized binary to int conversion using pre-computed powers (MSB first)
+    unique_number = np.dot(area_binary, _POWERS_BASE_2_12)
     
     # Flip horizontally and compare (for symmetry)
     # Reconstruct the 4x4 with center removed to flip it
-    area_4x4_with_mask = np.zeros((4, 4), dtype=int)
+    area_4x4_with_mask = np.zeros((4, 4), dtype=np.int64)
     area_4x4_with_mask[mask] = outer_squares
     flipped_area_4x4 = np.fliplr(area_4x4_with_mask)
     flipped_outer_squares = flipped_area_4x4[mask]
-    flipped_binary = (flipped_outer_squares > 0).astype(int)
+    flipped_binary = (flipped_outer_squares > 0).astype(np.int64)
     
-    # Convert flipped to number
-    flipped_number = 0
-    for bit in flipped_binary:
-        flipped_number = (flipped_number << 1) | bit
+    # Vectorized binary to int for flipped
+    flipped_number = np.dot(flipped_binary, _POWERS_BASE_2_12)
     
     
     # Take the lower of the two numbers (original, flipped) for symmetry

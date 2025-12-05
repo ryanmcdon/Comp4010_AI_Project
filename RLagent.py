@@ -238,9 +238,12 @@ def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon
                 #print(f"Reward returned: {reward}. Updating {len(state_action_history)} previous state-action pairs.")
                 alpha = 0.01
                 # Update all previous state-action pairs with this reward
-                if len(state_action_history) > 0:
-                    indices = np.array(state_action_history)
-                    policy_matrix[indices[:, 0], indices[:, 1]] += alpha * (reward - policy_matrix[indices[:, 0], indices[:, 1]])
+                # Optimized: avoid creating temporary array in subtraction
+                indices = np.array(state_action_history, dtype=np.int32)
+                states = indices[:, 0]
+                actions = indices[:, 1]
+                current_values = policy_matrix[states, actions]
+                policy_matrix[states, actions] = current_values + alpha * (reward - current_values)
                 # Clear the history after updating
                 state_action_history = []
                 
@@ -315,8 +318,17 @@ def epsilonGreedyAgent(env, possible_actions, behavior_name, gamma=0.99, epsilon
                 )
                 env.set_actions(behavior_name, action_tuple)
 
-
-            
+        # Save the policy matrix every 100 episodes
+        if (episode + 1) % 100 == 0:
+            if save_to_file is not None:
+                # Save with episode number in filename
+                base_name = save_to_file.replace('.npy', '') if save_to_file.endswith('.npy') else save_to_file
+                episode_save_path = f"{base_name}_episode_{episode + 1}.npy"
+                save_policy_matrix(policy_matrix, episode_save_path)
+            else:
+                # If no save_to_file provided, use default name with episode number
+                episode_save_path = f"policy_matrix_episode_{episode + 1}.npy"
+                save_policy_matrix(policy_matrix, episode_save_path)
     
     # Save the policy matrix if save_to_file is provided (final save)
     if save_to_file is not None:
