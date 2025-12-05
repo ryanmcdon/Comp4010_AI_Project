@@ -1,6 +1,9 @@
 # Comp4010_AI_Project
 Repository for our COMP 4010 final group project
 
+## !! LINK TO UNITY REPO !!
+https://github.com/littlemanstann/COMP4010-UnityTetrisRecreation
+
 ### Contributors:
 - Ryan McDonald
 - Stanny Huang
