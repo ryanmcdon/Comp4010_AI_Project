@@ -9,6 +9,7 @@
 a3env/
 venv/
 .env/
+__pycache__/
 
 # ML-Agents full release — DO NOT TRACK
 ml-agents-release_23_tag/
