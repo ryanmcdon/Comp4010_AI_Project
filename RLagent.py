@@ -179,7 +179,17 @@ def flatten_state(obs):
     return arr.reshape(-1)
 
 
-env = UnityEnvironment(file_name=None)
+env = UnityEnvironment(
+    file_name="DQN-Unity/Tetris",
+    no_graphics=False,
+    seed=1,
+    additional_args=[
+        "-screen-fullscreen", "0",
+        "-screen-width", "800",
+        "-screen-height", "800"
+    ]
+)
+
 env.reset()
 behavior_name = list(env.behavior_specs.keys())[0]
 print(f"Connected to {behavior_name}")
